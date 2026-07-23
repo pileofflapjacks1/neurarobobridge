@@ -30,6 +30,23 @@ import { PlaybackBciBackend } from "../bci/PlaybackBciBackend.js";
 import { resolveScenario } from "../bci/scenarios.js";
 import { SimulatedArmBackend } from "../robot/SimulatedArmBackend.js";
 import { SimulatedHumanoidBackend } from "../robot/SimulatedHumanoidBackend.js";
+import {
+  registerBuiltinSkills,
+  registerSkill,
+  SkillRuntime,
+  getSkill,
+  type ActiveSkill,
+  type SkillDefinition,
+} from "../skills/index.js";
+import {
+  PolicyEngine,
+  createKeepOutZonesPolicy,
+  createHomeGeofencePolicy,
+  createNoLocomotionWhileGraspingPolicy,
+  createMaxSpeedByZonePolicy,
+  createNoFreeMoveDuringSkillPolicy,
+  type SafetyPolicy,
+} from "../policy/index.js";
 import type { NeuraRoboBridgeConfig, ScenarioStep } from "../types/config.js";
 import type { NeuraRoboBridgeEvents, BridgeStatus } from "../types/events.js";
 import type { NeuralIntention, IntentionInput, ConfirmPayload } from "../types/intention.js";
@@ -39,10 +56,16 @@ import type { SessionRecording } from "../types/session.js";
 import type { ControlMode } from "../types/control.js";
 import type { RobotCapabilities } from "../types/capabilities.js";
 import type { RobotFeedback, LatencySample } from "../types/feedback.js";
-import type { ActiveTask, PendingConfirmation, TaskPayload } from "../types/task.js";
+import type {
+  ActiveTask,
+  PendingConfirmation,
+  TaskPayload,
+  ModulatePayload,
+} from "../types/task.js";
 
 registerBuiltinBciBackends();
 registerBuiltinRobotBackends();
+registerBuiltinSkills();
 
 export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
   private config: ReturnType<typeof resolveConfig>;
@@ -50,6 +73,9 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
   private safety: SafetyEngine;
   private confirmMgr: ConfirmManager;
   private watchdog: Watchdog;
+  private policyEngine: PolicyEngine;
+  private skillRuntime: SkillRuntime;
+  private skillsEnabled: boolean;
   private bci: BciBackend;
   private robot: RobotBackend;
   private recorder: SessionRecorder | null = null;
@@ -74,6 +100,31 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
       safetyCfg,
       (idleMs) => this.onWatchdogTimeout(idleMs),
       this.log.child(":watchdog")
+    );
+    this.policyEngine = this.buildPolicyEngine();
+    this.skillsEnabled = this.config.skills?.enabled !== false;
+    for (const s of this.config.skills?.skills ?? []) {
+      registerSkill(s);
+    }
+    this.skillRuntime = new SkillRuntime(
+      {
+        execute: (cmd) => this.executeSkillCommand(cmd),
+        onUpdate: (skill) => this.onSkillUpdate(skill),
+        onFeedback: (kind, message, skill) => {
+          this.emitFeedback({
+            kind: kind as RobotFeedback["kind"],
+            message,
+            taskId: skill.taskId,
+            intentionId: skill.intentionId,
+            progress: skill.progress,
+          });
+        },
+        log: (...args) => this.log.debug(...args),
+      },
+      {
+        defaultStepDelayMs: this.config.skills?.defaultStepDelayMs,
+        preempt: this.config.skills?.preempt,
+      }
     );
     this.bci = createBciBackend(this.config, this.log.child(":bci"));
     this.robot = createRobotBackend(this.config, this.log.child(":robot"));
@@ -252,6 +303,7 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
   emergencyStop(reason?: string): void {
     this.watchdog.stop();
     this.confirmMgr.cancelAll();
+    this.skillRuntime.cancel(reason ?? "Emergency stop");
     const { event, command } = this.safety.emergencyStop(reason);
     this.emitSafety(event);
     this.robot.emergencyStop();
@@ -323,6 +375,30 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
     this.emitSafetyStatus();
   }
 
+  // ─── Skills & policies ───────────────────────────────────
+
+  /** Register an additional skill definition at runtime. */
+  registerSkill(skill: SkillDefinition): void {
+    registerSkill(skill);
+  }
+
+  /** Add or replace a safety policy plugin. */
+  addPolicy(policy: SafetyPolicy): void {
+    this.policyEngine.add(policy);
+  }
+
+  removePolicy(id: string): boolean {
+    return this.policyEngine.remove(id);
+  }
+
+  listPolicies(): SafetyPolicy[] {
+    return this.policyEngine.list();
+  }
+
+  getActiveSkill(): ActiveSkill | null {
+    return this.skillRuntime.getActive();
+  }
+
   // ─── Session recording ───────────────────────────────────
 
   startRecording(meta?: Record<string, unknown>): void {
@@ -389,6 +465,7 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
   }
 
   dispose(): void {
+    this.skillRuntime.dispose();
     this.watchdog.dispose();
     this.stopConfirmSweeper();
     void this.disconnect();
@@ -503,6 +580,20 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
       return;
     }
 
+    // Mid-skill modulate can short-circuit if a skill is running
+    if (intention.kind === "modulate" && this.skillRuntime.isRunning()) {
+      const mod = intention.payload as ModulatePayload | undefined;
+      if (mod) this.skillRuntime.modulate(mod);
+      const decision = this.safety.evaluate(intention, translateIntention);
+      if (decision.allowed && decision.command) {
+        this.emit("command", decision.command);
+        this.recorder?.recordCommand(decision.command);
+        void this.safeExecute(decision.command, intention, decision.gateMs);
+      }
+      this.emitLatency(intention, decision.gateMs ?? 0);
+      return;
+    }
+
     const decision = this.safety.evaluate(intention, translateIntention);
 
     if (decision.event) {
@@ -515,6 +606,7 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
       // cancel may be allowed without command if only clearing confirmations
       if (intention.kind === "cancel") {
         this.confirmMgr.cancelAll();
+        this.skillRuntime.cancel("User cancel");
         if (this.activeTask) {
           this.activeTask = {
             ...this.activeTask,
@@ -522,6 +614,7 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
             message: "Cancelled",
           };
           this.emit("task", this.activeTask);
+          this.activeTask = null;
         }
         if (decision.command) {
           this.emit("command", decision.command);
@@ -535,31 +628,130 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
       return;
     }
 
-    if (decision.command.kind === "execute_task" && decision.command.task) {
-      this.activeTask = {
-        id: decision.command.task.taskId ?? createId("task"),
-        task: decision.command.task.name,
-        status: "running",
-        intentionId: intention.id,
-        startedAt: Date.now(),
-        progress: 0,
-        message: `Running ${decision.command.task.name}`,
-      };
-      this.emit("task", this.activeTask);
+    // World / interaction policy plugins (post translation)
+    const policyOutcome = this.policyEngine.evaluate({
+      intention,
+      command: decision.command,
+      robotState: this.robot.getState(),
+      controlMode: this.safety.getControlMode(),
+      capabilities: this.capabilities,
+      activeTask: this.activeTask,
+      holding: this.isHolding(),
+    });
+
+    if (!policyOutcome.allowed) {
+      const r = policyOutcome.result;
+      const event = this.safety.record(
+        r?.reason ?? "policy_violation",
+        r?.severity ?? "warning",
+        r?.message ?? "Blocked by policy",
+        intention.id,
+        decision.command.id,
+        { policyId: r?.policyId }
+      );
+      this.emitSafety(event);
+      this.emit("intentionRejected", intention, event.message);
+      return;
     }
 
-    if (decision.command.kind === "cancel_task") {
+    const command = policyOutcome.command ?? decision.command;
+    if (
+      policyOutcome.result?.message &&
+      policyOutcome.result.patchCommand
+    ) {
+      const event = this.safety.record(
+        "policy_violation",
+        "info",
+        policyOutcome.result.message,
+        intention.id,
+        command.id,
+        { policyId: policyOutcome.result.policyId, patched: true }
+      );
+      this.emitSafety(event);
+    }
+
+    if (command.kind === "cancel_task") {
       this.confirmMgr.cancelAll();
+      this.skillRuntime.cancel("cancel_task");
       if (this.activeTask) {
         this.activeTask = { ...this.activeTask, status: "cancelled" };
         this.emit("task", this.activeTask);
         this.activeTask = null;
       }
+      this.emit("command", command);
+      this.recorder?.recordCommand(command);
+      void this.safeExecute(command, intention, decision.gateMs);
+      return;
     }
 
-    this.emit("command", decision.command);
-    this.recorder?.recordCommand(decision.command);
-    void this.safeExecute(decision.command, intention, decision.gateMs);
+    // Shared-autonomy skill runtime for task commands
+    if (
+      this.skillsEnabled &&
+      command.kind === "execute_task" &&
+      command.task &&
+      getSkill(command.task.name)
+    ) {
+      const taskId = command.task.taskId ?? createId("task");
+      command.task = { ...command.task, taskId };
+      const started = this.skillRuntime.start({
+        skillName: command.task.name,
+        taskId,
+        intentionId: intention.id,
+        target: command.task.target,
+        position: command.task.position,
+        params: command.task.params,
+        robotState: this.robot.getState(),
+        capabilities: this.capabilities,
+      });
+
+      if (!started.ok) {
+        const event = this.safety.record(
+          "skill_error",
+          "warning",
+          started.reason,
+          intention.id,
+          command.id
+        );
+        this.emitSafety(event);
+        this.emit("intentionRejected", intention, started.reason);
+        return;
+      }
+
+      this.activeTask = {
+        id: taskId,
+        task: command.task.name,
+        status: "running",
+        intentionId: intention.id,
+        startedAt: Date.now(),
+        progress: 0,
+        message: `Skill ${command.task.name}`,
+        stepIndex: 0,
+        stepCount: started.skill.stepCount,
+      };
+      this.emit("task", this.activeTask);
+      this.emit("skill", started.skill);
+      this.emit("command", command);
+      this.recorder?.recordCommand(command);
+      // Skill runtime executes steps; do not also dump raw execute_task
+      return;
+    }
+
+    if (command.kind === "execute_task" && command.task) {
+      this.activeTask = {
+        id: command.task.taskId ?? createId("task"),
+        task: command.task.name,
+        status: "running",
+        intentionId: intention.id,
+        startedAt: Date.now(),
+        progress: 0,
+        message: `Running ${command.task.name}`,
+      };
+      this.emit("task", this.activeTask);
+    }
+
+    this.emit("command", command);
+    this.recorder?.recordCommand(command);
+    void this.safeExecute(command, intention, decision.gateMs);
   }
 
   private handleConfirm(intention: NeuralIntention): void {
@@ -675,7 +867,81 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
     }
   }
 
+  private buildPolicyEngine(): PolicyEngine {
+    const engine = new PolicyEngine([], this.log.child(":policy"));
+    const cfg = this.config.policies ?? {};
+    if (cfg.keepOutZones?.length) {
+      engine.add(createKeepOutZonesPolicy(cfg.keepOutZones));
+    }
+    if (cfg.homeGeofence) {
+      engine.add(createHomeGeofencePolicy(cfg.homeGeofence));
+    }
+    if (cfg.speedZones?.length) {
+      engine.add(createMaxSpeedByZonePolicy(cfg.speedZones));
+    }
+    if (cfg.noLocomotionWhileGrasping) {
+      engine.add(createNoLocomotionWhileGraspingPolicy());
+    }
+    const noFree =
+      cfg.noFreeMoveDuringSkill ?? this.config.skills?.enabled !== false;
+    if (noFree) {
+      engine.add(createNoFreeMoveDuringSkillPolicy());
+    }
+    for (const p of cfg.policies ?? []) {
+      engine.add(p);
+    }
+    return engine;
+  }
+
+  private isHolding(): boolean {
+    const g = this.robot.getState().grippers ?? [];
+    return g.some((x) => x.holding === true || x.open < 0.3);
+  }
+
+  private onSkillUpdate(skill: ActiveSkill): void {
+    this.emit("skill", skill);
+    this.activeTask = {
+      id: skill.taskId,
+      task: skill.skillName,
+      status:
+        skill.status === "running"
+          ? "running"
+          : skill.status === "succeeded"
+            ? "succeeded"
+            : skill.status === "cancelled"
+              ? "cancelled"
+              : skill.status === "failed"
+                ? "failed"
+                : "idle",
+      intentionId: skill.intentionId,
+      startedAt: skill.startedAt,
+      progress: skill.progress,
+      message: skill.message,
+      stepIndex: skill.stepIndex,
+      stepCount: skill.stepCount,
+      currentStepId: skill.currentStepId,
+    };
+    this.emit("task", this.activeTask);
+    if (skill.status !== "running") {
+      // Keep final task snapshot briefly then clear if terminal
+      if (
+        skill.status === "succeeded" ||
+        skill.status === "failed" ||
+        skill.status === "cancelled"
+      ) {
+        this.activeTask = null;
+      }
+    }
+  }
+
+  private async executeSkillCommand(command: RobotCommand): Promise<void> {
+    this.emit("command", command);
+    this.recorder?.recordCommand(command);
+    await this.safeExecute(command);
+  }
+
   private onWatchdogTimeout(idleMs: number): void {
+    this.skillRuntime.cancel("Watchdog timeout");
     const action =
       this.config.safety?.watchdogAction ?? DEFAULT_SAFETY.watchdogAction;
     this.safety.setWatchdogAlive(false);

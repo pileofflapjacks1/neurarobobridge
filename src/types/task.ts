@@ -75,4 +75,8 @@ export interface ActiveTask {
   startedAt: number;
   progress?: number;
   message?: string;
+  /** Skill step index when skill runtime is driving the task. */
+  stepIndex?: number;
+  stepCount?: number;
+  currentStepId?: string;
 }

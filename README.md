@@ -88,6 +88,7 @@ bridge.injectIntention({
 npm run example:basic       # pick-place scenario → simulated arm
 npm run example:safety     # confidence, workspace, rate limit, e-stop
 npm run example:humanoid   # modes, confirm-to-execute, tasks, feedback
+npm run example:skills     # skill runtime + policy plugins + NeuralBridge map
 ```
 
 Browser demo: build first, then serve the repo and open `examples/browser/index.html` (uses `dist/index.js` via import map).
@@ -180,19 +181,41 @@ Safety is **not optional** and is **not bolted on**:
 
 Every intervention emits a `safetyEvent`. Pipeline **latency** samples and **feedback** (task started/completed, blocked, needs_help, awaiting_confirm) support closed-loop UIs and future haptics.
 
-### Task-level intentions (humanoid-class)
+### Task-level intentions + skill runtime (humanoid-class)
 
 ```ts
 bridge.injectIntention({
   kind: "task",
   confidence: 0.92,
-  payload: { task: "go_to", position: { x: 1, y: 0, z: 0 } },
+  payload: { task: "pick_object", position: { x: 0.3, y: 0.1, z: 0.25 } },
 });
-// → pendingConfirm event; then:
-bridge.injectIntention({ kind: "confirm", confidence: 0.95 });
+// → SkillRuntime runs approach → grasp → lift (shared autonomy)
+// modulate / cancel work mid-skill
 ```
 
-Built-in task names: `pick_object`, `place_object`, `hand_over`, `follow_me`, `go_to`, `open_door`, `wait`, `wave`, plus app-defined strings.
+Built-in skills: `pick_object`, `place_object`, `hand_over`, `follow_me`, `go_to`, `open_door`, `wait`, `wave`.  
+Register more with `registerSkill` or `skills.skills` in config.  
+See **[docs/skills-policies-neuralbridge.md](./docs/skills-policies-neuralbridge.md)**.
+
+### Policy plugins
+
+```ts
+new NeuraRoboBridge({
+  policies: {
+    keepOutZones: [{ id: "stairs", min: {…}, max: {…} }],
+    noLocomotionWhileGrasping: true,
+    noFreeMoveDuringSkill: true,
+  },
+});
+```
+
+### NeuralBridge adapter
+
+```ts
+import { attachNeuralBridge } from "neurarobobridge";
+// neural = NeuralBridge instance (peer); no hard dependency
+attachNeuralBridge(neural, robo);
+```
 
 ---
 

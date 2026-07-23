@@ -25,7 +25,9 @@ export type SafetyReason =
   | "preempted"
   | "awaiting_confirm"
   | "confirm_timeout"
-  | "confirm_required";
+  | "confirm_required"
+  | "policy_violation"
+  | "skill_error";
 
 /** Severity of a safety intervention. */
 export type SafetySeverity = "info" | "warning" | "critical";

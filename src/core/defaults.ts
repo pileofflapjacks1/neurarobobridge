@@ -119,6 +119,13 @@ export function resolveConfig(
     bciBackend: partial.bciBackend ?? "simulator",
     robotBackend: partial.robotBackend ?? "simulated-arm",
     safety: { ...DEFAULT_SAFETY, ...partial.safety },
+    skills: {
+      enabled: partial.skills?.enabled ?? true,
+      defaultStepDelayMs: partial.skills?.defaultStepDelayMs ?? 120,
+      preempt: partial.skills?.preempt ?? true,
+      skills: partial.skills?.skills,
+    },
+    policies: partial.policies ?? {},
     bciSimulator: { ...DEFAULT_BCI_SIMULATOR, ...partial.bciSimulator },
     simulatedArm: { ...DEFAULT_SIMULATED_ARM, ...partial.simulatedArm },
     simulatedHumanoid: partial.simulatedHumanoid ?? {},

@@ -63,6 +63,68 @@ export type {
 
 export { SessionRecorder } from "./recording/index.js";
 
+// Skills (shared autonomy)
+export {
+  registerSkill,
+  unregisterSkill,
+  getSkill,
+  listSkills,
+  registerBuiltinSkills,
+  clearSkills,
+  SkillRuntime,
+  BUILTIN_SKILLS,
+  pickObjectSkill,
+  placeObjectSkill,
+  handOverSkill,
+  goToSkill,
+  followMeSkill,
+  openDoorSkill,
+  waitSkill,
+  waveSkill,
+} from "./skills/index.js";
+export type {
+  SkillStep,
+  SkillModulation,
+  SkillContext,
+  SkillDefinition,
+  SkillRunStatus,
+  ActiveSkill,
+  SkillRuntimeHandlers,
+  SkillRuntimeOptions,
+} from "./skills/index.js";
+
+// Policy plugins
+export {
+  PolicyEngine,
+  createKeepOutZonesPolicy,
+  createHomeGeofencePolicy,
+  createNoLocomotionWhileGraspingPolicy,
+  createMaxSpeedByZonePolicy,
+  createNoFreeMoveDuringSkillPolicy,
+} from "./policy/index.js";
+export type {
+  PolicyContext,
+  PolicyResult,
+  SafetyPolicy,
+  Zone3,
+} from "./policy/index.js";
+
+// NeuralBridge adapter (zero hard dependency)
+export {
+  mapNeuralBridgeIntention,
+  mapNeuralBridgeGesture,
+  NeuralBridgeAdapter,
+  attachNeuralBridge,
+} from "./adapters/index.js";
+export type {
+  NeuralBridgeIntentionLike,
+  NeuralBridgeGestureLike,
+  IntentionMapFn,
+  GestureMapFn,
+  NeuralBridgeLike,
+  NeuralBridgeAdapterOptions,
+} from "./adapters/index.js";
+
 export {
   INTENTION_PRIORITY,
   PRIORITY_RANK,
@@ -132,4 +194,6 @@ export type {
   PendingConfirmation,
   TaskStatus,
   ActiveTask,
+  SkillRuntimeConfig,
+  PolicyConfig,
 } from "./types/index.js";

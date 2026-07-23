@@ -9,6 +9,7 @@ import type { ControlMode } from "./control.js";
 import type { RobotCapabilities } from "./capabilities.js";
 import type { RobotFeedback, LatencySample } from "./feedback.js";
 import type { PendingConfirmation, ActiveTask } from "./task.js";
+import type { ActiveSkill } from "../skills/types.js";
 
 /** Connection / lifecycle status. */
 export type BridgeStatus =
@@ -65,8 +66,12 @@ export interface NeuraRoboBridgeEvents {
   pendingConfirm: (pending: PendingConfirmation) => void;
   /** Active task lifecycle updates. */
   task: (task: ActiveTask) => void;
+  /** Shared-autonomy skill progress (step-level). */
+  skill: (skill: ActiveSkill) => void;
   /** Pipeline latency samples. */
   latency: (sample: LatencySample) => void;
+  /** Intention dropped by NeuralBridge adapter mapping (optional consumers). */
+  adapterDrop: (reason: string, event: unknown) => void;
 }
 
 export type NeuraRoboBridgeEventName = keyof NeuraRoboBridgeEvents;

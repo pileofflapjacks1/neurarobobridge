@@ -4,6 +4,8 @@
 
 import type { SafetyConfig } from "./safety.js";
 import type { WorkspaceLimits, JointLimits } from "./robot.js";
+import type { SafetyPolicy, Zone3 } from "../policy/types.js";
+import type { SkillDefinition } from "../skills/types.js";
 
 /** Built-in BCI backend identifiers. */
 export type BciBackendId =
@@ -93,6 +95,34 @@ export interface RecordingConfig {
 /** Logging level. */
 export type LogLevel = "debug" | "info" | "warn" | "error" | "silent";
 
+/** Skill runtime configuration. */
+export interface SkillRuntimeConfig {
+  /** Enable shared-autonomy skill execution for task intents. Default true. */
+  enabled?: boolean;
+  /** Default delay between skill steps (ms). */
+  defaultStepDelayMs?: number;
+  /** Preempt running skill when a new task starts. Default true. */
+  preempt?: boolean;
+  /** Extra skill definitions to register at construct time. */
+  skills?: SkillDefinition[];
+}
+
+/** World / constraint policy configuration. */
+export interface PolicyConfig {
+  /** Custom policy plugins (in addition to built-ins below). */
+  policies?: SafetyPolicy[];
+  /** Keep-out zones (goals may not enter). */
+  keepOutZones?: Zone3[];
+  /** Home geofence for locomotion goals. */
+  homeGeofence?: Zone3;
+  /** Zones that impose maxSpeed when goal/EE is inside. */
+  speedZones?: Zone3[];
+  /** Block locomotion while gripper is holding. Default false. */
+  noLocomotionWhileGrasping?: boolean;
+  /** Block free move while a skill is running. Default true when skills enabled. */
+  noFreeMoveDuringSkill?: boolean;
+}
+
 /**
  * Primary configuration object for `new NeuraRoboBridge(config)`.
  */
@@ -103,6 +133,10 @@ export interface NeuraRoboBridgeConfig {
   robotBackend?: RobotBackendId;
   /** Safety policy. */
   safety?: SafetyConfig;
+  /** Shared-autonomy skill runtime. */
+  skills?: SkillRuntimeConfig;
+  /** World-aware constraint policies. */
+  policies?: PolicyConfig;
   /** BCI simulator options (when bciBackend is simulator). */
   bciSimulator?: BciSimulatorConfig;
   /** Simulated arm options. */

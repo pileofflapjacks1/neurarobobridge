@@ -1,17 +1,33 @@
 {
+  "manifest_version": "1.0.0",
   "name": "neurarobobridge",
-  "displayName": "NeuraRoboBridge",
+  "display_name": "NeuraRoboBridge",
   "version": "0.3.0",
-  "description": "BCI-to-Robot connector / middleware with safety-first translation and simulator backends.",
-  "suite": "Neura Suite",
-  "category": "neuro-robotics",
-  "safetyClass": "physical-control",
-  "inputs": ["neural-intention", "bci-simulator", "session-playback"],
-  "outputs": ["robot-command", "robot-state", "safety-event"],
-  "hardwareTargets": {
-    "bci": ["simulator", "future-high-bandwidth-bci"],
-    "robot": ["simulated-arm", "simulated-humanoid", "future-ros2", "future-humanoid"]
-  },
-  "simulatorFirst": true,
-  "related": ["neuralbridge", "neurabinder", "neurabeach"]
+  "description": "BCI-to-robot middleware: high-level neural intentions → safe robot commands. Simulator arm/humanoid, skill runtime, policy plugins, NeuralBridge adapter. Computer-side / research only — not implant software.",
+  "safety_class": "research_only",
+  "runtime": "library",
+  "inputs": [
+    "synthetic",
+    "class_label",
+    "switch_binary",
+    "multichannel_stream"
+  ],
+  "outputs": ["ui_only", "file_export", "websocket"],
+  "hardware": [
+    "synthetic",
+    "generic_intent",
+    "websocket_intent",
+    "neuralink_sdk_future"
+  ],
+  "permissions": ["none", "network_local"],
+  "dof": "high_dof",
+  "latency_class": "realtime",
+  "platforms": ["macos", "windows", "linux", "web"],
+  "calibration": "optional",
+  "entrypoint": "npm install && npm run build && npm test && npm run example:skills",
+  "repository": "https://github.com/pileofflapjacks1/neurarobobridge",
+  "suite_role": "middleware",
+  "depends_on": [],
+  "adapter_maturity": "simulator_only",
+  "banned_claims": true
 }

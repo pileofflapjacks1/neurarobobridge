@@ -2,38 +2,70 @@
 
 **Production-quality BCI-to-Robot connector / middleware for TypeScript.**
 
-NeuraRoboBridge translates high-level **neural intentions** (from a Brain-Computer Interface) into **safe, reliable robot control commands** — for robotic arms, simplified humanoids, teleoperated platforms, and multi-robot systems (as the ecosystem grows).
+NeuraRoboBridge translates high-level **neural intentions** into **safe robot control commands** — for simulated robotic arms, simplified humanoids, and future real platforms.
 
-Applications and robot stacks should **never** talk directly to raw BCI hardware. NeuraRoboBridge is the intelligent, safety-conscious layer in the middle.
+Applications and robot stacks should **never** talk directly to raw BCI hardware. NeuraRoboBridge is the safety-conscious translation layer in the middle.
 
-> **Simulator-first.** The primary backends today are a high-quality **BCI Simulator** and **Simulated Robot** (arm + simplified humanoid). There is **no real Neuralink access** and **no real commercial humanoid API** in v0.1 — those surfaces are designed so adapters can plug in later without rewriting application code.
+[![GitHub](https://img.shields.io/badge/github-neurarobobridge-181717?logo=github)](https://github.com/pileofflapjacks1/neurarobobridge)
+[![NeuraBeach](https://img.shields.io/badge/NeuraBeach-listing-1d9bf0)](https://neurabeach.vercel.app/projects/neurarobobridge)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
-Companion to **[NeuralBridge](../neuralbridge)** (BCI connector / intent middleware) in Joe’s Neura Suite. NeuralBridge focuses on neural intent delivery to apps; NeuraRoboBridge focuses on **intent → safe robot action**.
+![Architecture](./docs/assets/demo/architecture.svg)
 
-Not affiliated with Neuralink, Tesla Optimus, or any implant/robot vendor.
+> **Simulator-first.** Primary backends today: **BCI Simulator** + **Simulated Robot** (arm / humanoid).  
+> There is **no real Neuralink access** and **no real commercial humanoid (e.g. Optimus) API**. Those surfaces are plugin-ready for later — we do not invent vendor protocols.
+
+### Safety & claims (read this)
+
+- **Computer-side / research / simulation only.** Not implant firmware. Not a medical device (SaMD). Not therapy software.
+- **Not affiliated with Neuralink, Tesla, Optimus, or any implant/robot vendor.**
+- Default under uncertainty: **do not move** (explicit `enableControl()`, e-stop, watchdog, confirm for high-risk tasks).
+- Package asserts `banned_claims: true` in [`neurabeach-manifest.json`](./neurabeach-manifest.json).
+
+### Joe’s Neura Suite
+
+| Piece | Role |
+|-------|------|
+| **[NeuraBeach](https://neurabeach.vercel.app)** | Discover / catalog |
+| **[NeuralBridge](https://github.com/pileofflapjacks1/neuralbridge)** | BCI → app/UI intents (middleware) |
+| **NeuraRoboBridge** (this repo) | High-level intents → **safe robot** commands (middleware, robot path) |
+| **[NeuraBinder](https://github.com/pileofflapjacks1/neurabinder)** | Reference app demo (UI) |
+| **Intent → OS** | OS pointer adapter (parallel path) |
+
+```
+NeuralBridge (optional)  ──adapter──▶  NeuraRoboBridge  ──▶  simulated arm / humanoid
+        UI / app intents              safety · skills · policies
+```
+
+NeuralBridge focuses on delivering neural intent to **applications**.  
+NeuraRoboBridge focuses on turning intent into **physical (or simulated) robot action** with safety designed in.
+
+Catalog: [NeuraBeach · col-neura-suite](https://neurabeach.vercel.app/collections/col-neura-suite) · Upload notes: [`LISTING.md`](./LISTING.md) · Demo guide: [`docs/DEMO.md`](./docs/DEMO.md)
 
 ---
 
 ## Why NeuraRoboBridge?
 
-| Problem | NeuraRoboBridge approach |
-|---------|----------------------|
-| Apps wire BCI hardware straight to robots | Stable API + modular backends on both sides |
-| Neural signals are noisy and intermittent | Confidence / quality gates, rate limits, explicit enable |
-| A mistaken command can cause real harm | Safety engine designed in from day one (e-stop, workspace, joints) |
-| Hardware is scarce during development | Simulator BCI + simulated arm/humanoid |
-| Robot platforms will churn | Plugin robot backends; apps depend only on NeuraRoboBridge |
-| Need browser *and* Node | Universal TypeScript, ESM + CJS builds |
+| Problem | Approach |
+|---------|----------|
+| Apps wire BCI hardware straight to robots | Stable API + modular backends |
+| Neural signals are noisy | Confidence gates, rate limits, stale TTL, watchdog |
+| Mistaken commands can cause harm | E-stop, enable gate, confirm, policy plugins |
+| Hardware is scarce | Simulator BCI + simulated arm/humanoid |
+| Humanoid use is task-level | Skill runtime (shared autonomy) |
+| Robot platforms will churn | Plugin robot backends |
 
 ---
 
 ## Quick start
 
 ```bash
-cd /Users/joe/Projects/neurarobobridge
+git clone https://github.com/pileofflapjacks1/neurarobobridge
+cd neurarobobridge
 npm install
 npm run build
 npm test
+npm run example:skills
 ```
 
 ```ts
@@ -52,52 +84,35 @@ const bridge = new NeuraRoboBridge({
   },
   bciSimulator: {
     scenario: "pick-place",
-    enableInputMapping: true,
+  },
+  skills: { enabled: true },
+  policies: {
+    noFreeMoveDuringSkill: true,
   },
 });
 
 bridge.on("intention", (intent) => {
   console.log("intention", intent.kind, intent.confidence);
 });
-
-bridge.on("robotState", (state) => {
-  console.log("robot", state.mode, state.pose?.position);
-});
-
-bridge.on("safetyEvent", (event) => {
-  console.warn("safety", event.reason, event.message);
-});
+bridge.on("skill", (s) => console.log("skill", s.skillName, s.status, s.message));
+bridge.on("robotState", (state) => console.log("robot", state.mode));
+bridge.on("safetyEvent", (event) => console.warn("safety", event.reason, event.message));
 
 await bridge.connect();
 await bridge.enableControl(); // explicit enable — required for motion
-
-// Manual intention (keyboard, UI, tests)
-bridge.injectIntention({
-  kind: "move",
-  confidence: 0.92,
-  payload: { target: { x: 0.3, y: 0.1, z: 0.4 }, speed: 0.5 },
-});
-
-// Instant e-stop
-// bridge.emergencyStop("operator");
 ```
 
 ### Examples
 
 ```bash
 npm run example:basic       # pick-place scenario → simulated arm
-npm run example:safety     # confidence, workspace, rate limit, e-stop
-npm run example:humanoid   # modes, confirm-to-execute, tasks, feedback
-npm run example:skills     # skill runtime + policy plugins + NeuralBridge map
+npm run example:safety      # confidence, workspace, rate limit, e-stop
+npm run example:humanoid    # modes, confirm-to-execute, tasks
+npm run example:skills      # skill runtime + policy plugins + NeuralBridge map
 ```
 
-Browser demo: build first, then serve the repo and open `examples/browser/index.html` (uses `dist/index.js` via import map).
-
-```bash
-npm run build
-npx serve .   # or any static server from the package root
-# open http://localhost:3000/examples/browser/
-```
+Browser demo (local): `npm run build && npx serve .` → `examples/browser/`.  
+**No hosted live demo** — this is a library (same class as NeuralBridge).
 
 ---
 
@@ -106,116 +121,55 @@ npx serve .   # or any static server from the package root
 ```
 ┌─────────────────────┐     ┌──────────────────────────┐     ┌─────────────────────┐
 │   BCI Input Side    │     │  Safety & Translation    │     │  Robot Output Side  │
-│                     │     │         Engine           │     │                     │
-│  • Simulator        │────▶│  • confidence / quality  │────▶│  • Simulated arm    │
-│  • Manual / inject  │     │  • rate limiting         │     │  • Simulated humanoid│
-│  • Playback         │     │  • control enable        │     │  • Null (tests)     │
-│  • (future HW)      │     │  • workspace / joints    │     │  • (future ROS 2 /  │
-│                     │     │  • emergency stop        │     │     humanoid APIs)  │
-└─────────────────────┘     │  • intention → command   │     └─────────────────────┘
-                            └──────────────────────────┘
-                                         │
-                                         ▼
-                               Public NeuraRoboBridge API
-                          (events: intention, command,
-                           robotState, safetyEvent, …)
+│  Simulator / Manual │────▶│  modes · watchdog · TTL  │────▶│  Simulated arm      │
+│  Playback           │     │  policies · skills       │     │  Simulated humanoid │
+│  NeuralBridge adapt.│     │  confirm · e-stop        │     │  Null / future ROS  │
+└─────────────────────┘     └──────────────────────────┘     └─────────────────────┘
 ```
 
-**Core principle:** robot backends never see raw `NeuralIntention`. They only execute validated `RobotCommand` objects produced after safety checks.
-
-See **[docs/architecture.md](./docs/architecture.md)** for module layout, data flow, and extension points.  
-See **[docs/adding-backends.md](./docs/adding-backends.md)** for step-by-step plugin guides.
-
----
-
-## Public API (essentials)
-
-| Method | Purpose |
-|--------|---------|
-| `connect()` / `disconnect()` | Open / close BCI + robot backends |
-| `enableControl()` / `disableControl()` | Explicit motion gate (off by default) |
-| `emergencyStop(reason?)` | Latch e-stop; force robot stop |
-| `clearEmergencyStop()` | Unlatch e-stop (control still off) |
-| `injectIntention(input)` | Push a high-level intention through the pipeline |
-| `playScenario(name \| steps)` | Run built-in or custom BCI scenarios |
-| `on("intention" \| "command" \| "robotState" \| "safetyEvent" \| …)` | Typed events |
-| `startRecording()` / `stopRecording()` | Session capture for playback / analysis |
-| `updateSafety(partial)` | Hot-update safety policy |
-| `getRobotState()` / `getSafetyStatus()` | Snapshots |
-
-### Intention kinds
-
-`move` · `grasp` · `release` · `navigate` · `stop` · `home` · `custom`
-
-Each intention carries `confidence` (required) and optional `quality`, plus a kind-specific payload.
-
-### Built-in backends
-
-**BCI:** `simulator` · `manual` · `playback` / `recording`  
-
-**Robot:** `simulated-arm` · `simulated-humanoid` · `null`
-
-Register more with `registerBciBackend` / `registerRobotBackend`.
-
-### Built-in scenarios
-
-`pick-place` · `demo` · `safety-stress` · `navigate`
+Docs: [`docs/architecture.md`](./docs/architecture.md) · [`docs/adding-backends.md`](./docs/adding-backends.md) · [`docs/skills-policies-neuralbridge.md`](./docs/skills-policies-neuralbridge.md)
 
 ---
 
 ## Safety model
 
-Safety is **not optional** and is **not bolted on**:
-
 1. **Emergency stop** — highest priority; latches until cleared  
-2. **Control enable + modes** — motion blocked until `enableControl()`; modes: `disabled` · `supervised` · `shared` · `teleop` · `autonomous_task`  
-3. **BCI liveness watchdog** — if intentions stop flowing, fail-safe stop (or e-stop)  
-4. **Stale intention TTL** — drop late continuous (default 250ms) and discrete (default 2s) intents  
+2. **Control enable + modes** — `disabled` · `supervised` · `shared` · `teleop` · `autonomous_task`  
+3. **BCI liveness watchdog** — silence → fail-safe stop  
+4. **Stale intention TTL**  
 5. **Confidence / quality thresholds**  
-6. **Confirm-to-execute** — high-risk tasks (`go_to`, `open_door`, …) and navigate require confirm  
-7. **Robot capabilities handshake** — reject commands the body cannot run  
-8. **Rate limiting** (per-second + min interval)  
-9. **Workspace clamp** and **joint limit** checks  
-10. **Max speed** enforcement  
-11. **Priority bands** — `estop > stop > cancel > confirm > discrete_task > continuous`  
+6. **Confirm-to-execute** for high-risk tasks / navigate  
+7. **Robot capabilities** handshake  
+8. **Policy plugins** — keep-out, geofence, speed zones, no loco while grasping  
+9. **Skill runtime** — multi-step shared autonomy with modulate / cancel  
+10. **Rate limiting**, workspace / joint limits, max speed  
 
-Every intervention emits a `safetyEvent`. Pipeline **latency** samples and **feedback** (task started/completed, blocked, needs_help, awaiting_confirm) support closed-loop UIs and future haptics.
+---
 
-### Task-level intentions + skill runtime (humanoid-class)
+## Skills, policies, NeuralBridge
 
 ```ts
+// Shared-autonomy skill
 bridge.injectIntention({
   kind: "task",
   confidence: 0.92,
   payload: { task: "pick_object", position: { x: 0.3, y: 0.1, z: 0.25 } },
 });
-// → SkillRuntime runs approach → grasp → lift (shared autonomy)
-// modulate / cancel work mid-skill
-```
 
-Built-in skills: `pick_object`, `place_object`, `hand_over`, `follow_me`, `go_to`, `open_door`, `wait`, `wave`.  
-Register more with `registerSkill` or `skills.skills` in config.  
-See **[docs/skills-policies-neuralbridge.md](./docs/skills-policies-neuralbridge.md)**.
-
-### Policy plugins
-
-```ts
+// Policies
 new NeuraRoboBridge({
   policies: {
-    keepOutZones: [{ id: "stairs", min: {…}, max: {…} }],
+    keepOutZones: [{ id: "stairs", min: { x: 2, y: -1, z: 0 }, max: { x: 4, y: 1, z: 2 } }],
     noLocomotionWhileGrasping: true,
-    noFreeMoveDuringSkill: true,
   },
 });
-```
 
-### NeuralBridge adapter
-
-```ts
+// Optional NeuralBridge glue (zero hard dependency)
 import { attachNeuralBridge } from "neurarobobridge";
-// neural = NeuralBridge instance (peer); no hard dependency
-attachNeuralBridge(neural, robo);
+attachNeuralBridge(neuralBridgeInstance, bridge);
 ```
+
+Built-in skills: `pick_object`, `place_object`, `hand_over`, `follow_me`, `go_to`, `open_door`, `wait`, `wave`.
 
 ---
 
@@ -223,19 +177,12 @@ attachNeuralBridge(neural, robo);
 
 ```
 neurarobobridge/
-├── src/
-│   ├── index.ts              # public exports
-│   ├── types/                # intentions, robot, safety, config, events, session
-│   ├── core/                 # NeuraRoboBridge, Translator, EventEmitter, Logger
-│   ├── safety/               # SafetyEngine
-│   ├── bci/                  # BCI backends + registry + scenarios
-│   ├── robot/                # Robot backends + registry
-│   └── recording/            # SessionRecorder
-├── tests/                    # Vitest
-├── examples/
-│   ├── vanilla/              # Node demos
-│   └── browser/              # Canvas + keyboard demo
-└── docs/                     # architecture + extension guides
+├── src/          # core, safety, skills, policy, bci, robot, adapters
+├── tests/        # Vitest (52+)
+├── examples/     # vanilla Node + browser
+├── docs/         # architecture, demo, assets
+├── LISTING.md    # NeuraBeach upload helper
+└── neurabeach-manifest.json
 ```
 
 ---
@@ -247,46 +194,23 @@ npm install
 npm run typecheck
 npm test
 npm run build
-npm run dev          # tsup watch
 ```
 
 - **Language:** TypeScript strict  
 - **Tests:** Vitest  
 - **Bundler:** tsup (ESM + CJS + `.d.ts`)  
 - **Runtime:** Node ≥ 18 and modern browsers  
-- **Dependencies:** none in production (zero runtime deps)
-
----
-
-## Future-proofing
-
-Designed for growth without API breakage:
-
-| Direction | Design hook |
-|-----------|-------------|
-| High-bandwidth BCI (Neuralink-class) | `BciBackend` interface + registry |
-| ROS 2 | `RobotBackend` emitting/subscribing to topics |
-| Humanoid platforms (Optimus-style) | `simulated-humanoid` as behavioral stand-in; real adapter later |
-| Multi-robot | Multiple bridge instances or a future orchestrator |
-| Haptics / proprioception | `robotState` + future bidirectional channels |
-| NeuralBridge integration | Shared intention vocabulary; NeuraRoboBridge consumes high-level intents |
-
-Placeholders for vendor hardware will **not** pretend real APIs exist. When drivers are available, they plug in as backends.
+- **Dependencies:** none in production  
 
 ---
 
 ## Package
 
-```json
-{
-  "name": "neurarobobridge",
-  "version": "0.1.0"
-}
-```
-
 ```ts
 import { NeuraRoboBridge } from "neurarobobridge";
 ```
+
+Version **0.3.0** · package name `neurarobobridge`.
 
 ---
 

@@ -1,0 +1,39 @@
+
+> neurarobobridge@0.3.0 example:skills
+> tsx examples/vanilla/skills-and-policies.ts
+
+[NeuraRoboBridge]:bci Manual BCI connected
+[NeuraRoboBridge]:robot Simulated arm connected
+[NeuraRoboBridge] Connected (bci=manual, robot=simulated-arm, class=arm). Call enableControl() to allow motion.
+[NeuraRoboBridge]:safety Control enabled supervised
+[NeuraRoboBridge]:safety Control mode → shared
+[NeuraRoboBridge] Control ENABLED shared
+Policies: keep_out_zones, no_free_move_during_skill
+
+1) Keep-out policy blocks a bad move:
+  🛡 policy: Goal enters keep-out zone "no-go-corner"
+  ✗ rejected move: Goal enters keep-out zone "no-go-corner"
+
+2) pick_object skill (shared autonomy steps):
+  skill pick_object [running] step 1/4 — Starting pick_object
+  skill pick_object [running] step 1/4 — Starting pick_object
+  → cmd execute_task
+  skill pick_object [running] step 1/4 — Approach above object
+  → cmd move_to
+  skill pick_object [running] step 1/4 — Modulated speed=0.40
+  → cmd modulate
+  skill pick_object [running] step 2/4 — Descend to object
+  → cmd move_to
+  skill pick_object [running] step 3/4 — Grasp
+  → cmd set_gripper
+  skill pick_object [running] step 4/4 — Lift object
+  → cmd move_to
+  skill pick_object [succeeded] step 5/4 — Completed pick_object
+
+3) Simulated NeuralBridge intention → adapter map → inject:
+   mapped: home
+  → cmd home
+[NeuraRoboBridge] Control DISABLED
+[NeuraRoboBridge] Disconnected
+
+Done.

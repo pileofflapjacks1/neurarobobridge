@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-label="NeuraRoboBridge architecture">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b0f14"/>
+      <stop offset="100%" stop-color="#121a24"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2433"/>
+      <stop offset="100%" stop-color="#141c28"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="640" fill="url(#bg)"/>
+  <text x="48" y="52" fill="#e7eef7" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="28" font-weight="700">NeuraRoboBridge</text>
+  <text x="48" y="82" fill="#8aa0b8" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="16">BCI intention → safety → skills / policies → robot command (simulator-first)</text>
+
+  <!-- BCI -->
+  <rect x="48" y="130" width="280" height="360" rx="16" fill="url(#card)" stroke="#2a3a4f"/>
+  <text x="72" y="168" fill="#3dd6c6" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14" font-weight="700" letter-spacing="0.08em">BCI INPUT</text>
+  <text x="72" y="210" fill="#e7eef7" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="18" font-weight="600">Simulator</text>
+  <text x="72" y="238" fill="#8aa0b8" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14">Manual / inject</text>
+  <text x="72" y="266" fill="#8aa0b8" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14">Playback</text>
+  <text x="72" y="294" fill="#8aa0b8" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14">NeuralBridge adapter</text>
+  <text x="72" y="340" fill="#5ddea0" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="13">NeuralIntention</text>
+  <text x="72" y="368" fill="#8aa0b8" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">move · grasp · task</text>
+  <text x="72" y="386" fill="#8aa0b8" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">confidence · quality</text>
+
+  <!-- Engine -->
+  <rect x="400" y="130" width="400" height="360" rx="16" fill="url(#card)" stroke="#3dd6c6" stroke-width="2"/>
+  <text x="424" y="168" fill="#3dd6c6" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14" font-weight="700" letter-spacing="0.08em">SAFETY &amp; TRANSLATION</text>
+  <text x="424" y="210" fill="#e7eef7" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="16">Watchdog · TTL · e-stop</text>
+  <text x="424" y="238" fill="#e7eef7" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="16">Control modes · confirm</text>
+  <text x="424" y="266" fill="#e7eef7" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="16">Policy plugins (zones)</text>
+  <text x="424" y="294" fill="#e7eef7" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="16">Skill runtime (shared autonomy)</text>
+  <text x="424" y="340" fill="#f0b429" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="13">RobotCommand</text>
+  <text x="424" y="368" fill="#8aa0b8" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">move_to · set_gripper · navigate</text>
+  <text x="424" y="386" fill="#8aa0b8" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">execute_task · estop · modulate</text>
+  <text x="424" y="430" fill="#8aa0b8" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="13">Default under uncertainty: do not move</text>
+
+  <!-- Robot -->
+  <rect x="872" y="130" width="280" height="360" rx="16" fill="url(#card)" stroke="#2a3a4f"/>
+  <text x="896" y="168" fill="#3dd6c6" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14" font-weight="700" letter-spacing="0.08em">ROBOT OUTPUT</text>
+  <text x="896" y="210" fill="#e7eef7" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="18" font-weight="600">Simulated arm</text>
+  <text x="896" y="238" fill="#8aa0b8" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14">Simulated humanoid</text>
+  <text x="896" y="266" fill="#8aa0b8" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14">Null (tests)</text>
+  <text x="896" y="294" fill="#8aa0b8" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14">Future ROS 2 / vendors</text>
+  <text x="896" y="340" fill="#5ddea0" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="13">RobotState + feedback</text>
+  <text x="896" y="368" fill="#8aa0b8" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">pose · joints · tasks</text>
+
+  <!-- arrows -->
+  <path d="M328 310 H400" stroke="#3dd6c6" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M800 310 H872" stroke="#3dd6c6" stroke-width="2" fill="none"/>
+  <polygon points="872,310 858,304 858,316" fill="#3dd6c6"/>
+  <polygon points="400,310 386,304 386,316" fill="#3dd6c6"/>
+
+  <text x="48" y="560" fill="#71767b" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="13">Joe’s Neura Suite · middleware (robot path) · MIT · not affiliated with Neuralink or Tesla Optimus</text>
+  <text x="48" y="588" fill="#71767b" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">github.com/pileofflapjacks1/neurarobobridge</text>
+</svg>

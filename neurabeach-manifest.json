@@ -24,7 +24,7 @@
   "latency_class": "realtime",
   "platforms": ["macos", "windows", "linux", "web"],
   "calibration": "optional",
-  "entrypoint": "npm install && npm run build && npm test && npm run example:skills",
+  "entrypoint": "https://neurarobobridge.vercel.app",
   "repository": "https://github.com/pileofflapjacks1/neurarobobridge",
   "suite_role": "middleware",
   "depends_on": [],

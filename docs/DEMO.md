@@ -1,6 +1,33 @@
 # Demo guide — NeuraRoboBridge
 
-Library-only package (no hosted Vercel demo). Use these paths for screenshots, reviews, and NeuraBeach listings.
+## Hosted live demo (Vercel)
+
+**URL:** https://neurarobobridge.vercel.app  
+**Alias path:** `/demo` (rewrites to the same SPA)
+
+Deploy: connect this GitHub repo to Vercel. Root directory = repo root.  
+`vercel.json` builds the library then the Vite SPA into `demo/dist`.
+
+```bash
+# Local parity with production
+npm install
+npm run demo            # http://localhost:5174
+npm run build:demo      # → demo/dist
+npm run demo:preview    # preview production build
+```
+
+### Demo features
+
+- Connect → **Enable control** (required) → skills / teleop
+- Simulated **arm** or **humanoid**
+- Skills: pick, place, wave; modulate speed; cancel
+- Keep-out zone (red corner) + low-confidence rejection
+- E-STOP · keyboard WASD / Esc
+- Simulator-only disclaimer banner
+
+---
+
+## CLI examples (screenshots / CI)
 
 ## 1. Skill runtime + policies (recommended)
 

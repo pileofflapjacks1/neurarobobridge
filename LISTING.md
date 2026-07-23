@@ -13,7 +13,7 @@ Use this when uploading or seeding **NeuraRoboBridge** on [NeuraBeach](https://n
 | Language | TypeScript |
 | GitHub | https://github.com/pileofflapjacks1/neurarobobridge |
 | Manifest | `neurabeach-manifest.json` (v1.0.0) |
-| Live demo | *None* — TypeScript library only (like NeuralBridge) |
+| Live demo | https://neurarobobridge.vercel.app (also `/demo`) |
 | Screenshots | `docs/assets/demo/hero.png`, `docs/assets/demo/architecture.svg` |
 
 ## Short description (≤280)

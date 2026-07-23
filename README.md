@@ -111,8 +111,12 @@ npm run example:humanoid    # modes, confirm-to-execute, tasks
 npm run example:skills      # skill runtime + policy plugins + NeuralBridge map
 ```
 
-Browser demo (local): `npm run build && npx serve .` → `examples/browser/`.  
-**No hosted live demo** — this is a library (same class as NeuralBridge).
+**Live demo (Vercel):** [neurarobobridge.vercel.app](https://neurarobobridge.vercel.app) · also `/demo`
+
+```bash
+npm run demo           # local Vite demo (http://localhost:5174)
+npm run build:demo     # static build → demo/dist (Vercel output)
+```
 
 ---
 

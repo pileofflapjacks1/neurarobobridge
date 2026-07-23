@@ -1,28 +1,28 @@
-# NeuroBridge
+# NeuraRoboBridge
 
 **Production-quality BCI-to-Robot connector / middleware for TypeScript.**
 
-NeuroBridge translates high-level **neural intentions** (from a Brain-Computer Interface) into **safe, reliable robot control commands** — for robotic arms, simplified humanoids, teleoperated platforms, and multi-robot systems (as the ecosystem grows).
+NeuraRoboBridge translates high-level **neural intentions** (from a Brain-Computer Interface) into **safe, reliable robot control commands** — for robotic arms, simplified humanoids, teleoperated platforms, and multi-robot systems (as the ecosystem grows).
 
-Applications and robot stacks should **never** talk directly to raw BCI hardware. NeuroBridge is the intelligent, safety-conscious layer in the middle.
+Applications and robot stacks should **never** talk directly to raw BCI hardware. NeuraRoboBridge is the intelligent, safety-conscious layer in the middle.
 
 > **Simulator-first.** The primary backends today are a high-quality **BCI Simulator** and **Simulated Robot** (arm + simplified humanoid). There is **no real Neuralink access** and **no real commercial humanoid API** in v0.1 — those surfaces are designed so adapters can plug in later without rewriting application code.
 
-Companion to **[NeuralBridge](../neuralbridge)** (BCI connector / intent middleware) in Joe’s Neura Suite. NeuralBridge focuses on neural intent delivery to apps; NeuroBridge focuses on **intent → safe robot action**.
+Companion to **[NeuralBridge](../neuralbridge)** (BCI connector / intent middleware) in Joe’s Neura Suite. NeuralBridge focuses on neural intent delivery to apps; NeuraRoboBridge focuses on **intent → safe robot action**.
 
 Not affiliated with Neuralink, Tesla Optimus, or any implant/robot vendor.
 
 ---
 
-## Why NeuroBridge?
+## Why NeuraRoboBridge?
 
-| Problem | NeuroBridge approach |
+| Problem | NeuraRoboBridge approach |
 |---------|----------------------|
 | Apps wire BCI hardware straight to robots | Stable API + modular backends on both sides |
 | Neural signals are noisy and intermittent | Confidence / quality gates, rate limits, explicit enable |
 | A mistaken command can cause real harm | Safety engine designed in from day one (e-stop, workspace, joints) |
 | Hardware is scarce during development | Simulator BCI + simulated arm/humanoid |
-| Robot platforms will churn | Plugin robot backends; apps depend only on NeuroBridge |
+| Robot platforms will churn | Plugin robot backends; apps depend only on NeuraRoboBridge |
 | Need browser *and* Node | Universal TypeScript, ESM + CJS builds |
 
 ---
@@ -30,16 +30,16 @@ Not affiliated with Neuralink, Tesla Optimus, or any implant/robot vendor.
 ## Quick start
 
 ```bash
-cd /Users/joe/Projects/neurobridge
+cd /Users/joe/Projects/neurarobobridge
 npm install
 npm run build
 npm test
 ```
 
 ```ts
-import { NeuroBridge } from "neurobridge";
+import { NeuraRoboBridge } from "neurarobobridge";
 
-const bridge = new NeuroBridge({
+const bridge = new NeuraRoboBridge({
   bciBackend: "simulator",
   robotBackend: "simulated-arm",
   safety: {
@@ -115,7 +115,7 @@ npx serve .   # or any static server from the package root
                             └──────────────────────────┘
                                          │
                                          ▼
-                               Public NeuroBridge API
+                               Public NeuraRoboBridge API
                           (events: intention, command,
                            robotState, safetyEvent, …)
 ```
@@ -199,11 +199,11 @@ Built-in task names: `pick_object`, `place_object`, `hand_over`, `follow_me`, `g
 ## Project layout
 
 ```
-neurobridge/
+neurarobobridge/
 ├── src/
 │   ├── index.ts              # public exports
 │   ├── types/                # intentions, robot, safety, config, events, session
-│   ├── core/                 # NeuroBridge, Translator, EventEmitter, Logger
+│   ├── core/                 # NeuraRoboBridge, Translator, EventEmitter, Logger
 │   ├── safety/               # SafetyEngine
 │   ├── bci/                  # BCI backends + registry + scenarios
 │   ├── robot/                # Robot backends + registry
@@ -246,7 +246,7 @@ Designed for growth without API breakage:
 | Humanoid platforms (Optimus-style) | `simulated-humanoid` as behavioral stand-in; real adapter later |
 | Multi-robot | Multiple bridge instances or a future orchestrator |
 | Haptics / proprioception | `robotState` + future bidirectional channels |
-| NeuralBridge integration | Shared intention vocabulary; NeuroBridge consumes high-level intents |
+| NeuralBridge integration | Shared intention vocabulary; NeuraRoboBridge consumes high-level intents |
 
 Placeholders for vendor hardware will **not** pretend real APIs exist. When drivers are available, they plug in as backends.
 
@@ -256,13 +256,13 @@ Placeholders for vendor hardware will **not** pretend real APIs exist. When driv
 
 ```json
 {
-  "name": "neurobridge",
+  "name": "neurarobobridge",
   "version": "0.1.0"
 }
 ```
 
 ```ts
-import { NeuroBridge } from "neurobridge";
+import { NeuraRoboBridge } from "neurarobobridge";
 ```
 
 ---

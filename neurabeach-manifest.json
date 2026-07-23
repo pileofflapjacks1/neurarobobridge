@@ -1,6 +1,6 @@
 {
-  "name": "neurobridge",
-  "displayName": "NeuroBridge",
+  "name": "neurarobobridge",
+  "displayName": "NeuraRoboBridge",
   "version": "0.2.0",
   "description": "BCI-to-Robot connector / middleware with safety-first translation and simulator backends.",
   "suite": "Neura Suite",

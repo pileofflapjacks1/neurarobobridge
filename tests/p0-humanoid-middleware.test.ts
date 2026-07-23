@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { NeuroBridge } from "../src/core/NeuroBridge.js";
+import { NeuraRoboBridge } from "../src/core/NeuraRoboBridge.js";
 import type { RobotCommand } from "../src/types/robot.js";
 import type { PendingConfirmation } from "../src/types/task.js";
 import type { RobotFeedback } from "../src/types/feedback.js";
 import type { SafetyEvent } from "../src/types/safety.js";
 
 describe("P0 humanoid middleware features", () => {
-  let bridge: NeuroBridge;
+  let bridge: NeuraRoboBridge;
 
   afterEach(() => {
     bridge?.dispose();
@@ -14,7 +14,7 @@ describe("P0 humanoid middleware features", () => {
 
   describe("RobotCapabilities handshake", () => {
     it("emits capabilities on connect for simulated arm", async () => {
-      bridge = new NeuroBridge({
+      bridge = new NeuraRoboBridge({
         bciBackend: "manual",
         robotBackend: "simulated-arm",
         logLevel: "silent",
@@ -31,7 +31,7 @@ describe("P0 humanoid middleware features", () => {
     });
 
     it("rejects navigate on arm via capability_mismatch", async () => {
-      bridge = new NeuroBridge({
+      bridge = new NeuraRoboBridge({
         bciBackend: "manual",
         robotBackend: "simulated-arm",
         logLevel: "silent",
@@ -56,7 +56,7 @@ describe("P0 humanoid middleware features", () => {
 
   describe("Control modes", () => {
     beforeEach(async () => {
-      bridge = new NeuroBridge({
+      bridge = new NeuraRoboBridge({
         bciBackend: "manual",
         robotBackend: "null",
         logLevel: "silent",
@@ -100,7 +100,7 @@ describe("P0 humanoid middleware features", () => {
 
   describe("Stale intention TTL", () => {
     it("rejects continuous move older than maxIntentionAgeMs", async () => {
-      bridge = new NeuroBridge({
+      bridge = new NeuraRoboBridge({
         bciBackend: "manual",
         robotBackend: "null",
         logLevel: "silent",
@@ -127,7 +127,7 @@ describe("P0 humanoid middleware features", () => {
 
   describe("Watchdog fail-safe", () => {
     it("disables control after BCI silence", async () => {
-      bridge = new NeuroBridge({
+      bridge = new NeuraRoboBridge({
         bciBackend: "manual",
         robotBackend: "null",
         logLevel: "silent",
@@ -154,7 +154,7 @@ describe("P0 humanoid middleware features", () => {
 
   describe("Confirm-to-execute", () => {
     it("holds navigate until confirm", async () => {
-      bridge = new NeuroBridge({
+      bridge = new NeuraRoboBridge({
         bciBackend: "manual",
         robotBackend: "simulated-humanoid",
         logLevel: "silent",
@@ -191,7 +191,7 @@ describe("P0 humanoid middleware features", () => {
     });
 
     it("requires confirm for high-risk go_to task", async () => {
-      bridge = new NeuroBridge({
+      bridge = new NeuraRoboBridge({
         bciBackend: "manual",
         robotBackend: "simulated-humanoid",
         logLevel: "silent",
@@ -216,7 +216,7 @@ describe("P0 humanoid middleware features", () => {
 
   describe("Task + feedback", () => {
     it("runs pick_object task on arm and emits feedback", async () => {
-      bridge = new NeuroBridge({
+      bridge = new NeuraRoboBridge({
         bciBackend: "manual",
         robotBackend: "simulated-arm",
         logLevel: "silent",
@@ -261,7 +261,7 @@ describe("P0 humanoid middleware features", () => {
 
   describe("Latency samples", () => {
     it("emits latency on accepted intention", async () => {
-      bridge = new NeuroBridge({
+      bridge = new NeuraRoboBridge({
         bciBackend: "manual",
         robotBackend: "null",
         logLevel: "silent",

@@ -1,15 +1,15 @@
-# Adding backends to NeuroBridge
+# Adding backends to NeuraRoboBridge
 
-NeuroBridge is built so new BCI sources and robot platforms can be added **without changing application code**. Apps keep using `NeuroBridge`; you register a backend and select it by id.
+NeuraRoboBridge is built so new BCI sources and robot platforms can be added **without changing application code**. Apps keep using `NeuraRoboBridge`; you register a backend and select it by id.
 
 ## Adding a BCI backend
 
 ### 1. Implement `BciBackend`
 
 ```ts
-import type { BciBackend, BciBackendStatus } from "neurobridge";
-import type { NeuralIntention } from "neurobridge";
-import { createId } from "neurobridge";
+import type { BciBackend, BciBackendStatus } from "neurarobobridge";
+import type { NeuralIntention } from "neurarobobridge";
+import { createId } from "neurarobobridge";
 
 export class MyDeviceBciBackend implements BciBackend {
   readonly id = "my-device";
@@ -65,7 +65,7 @@ export class MyDeviceBciBackend implements BciBackend {
 ### 2. Register the factory
 
 ```ts
-import { registerBciBackend, NeuroBridge } from "neurobridge";
+import { registerBciBackend, NeuraRoboBridge } from "neurarobobridge";
 import { MyDeviceBciBackend } from "./MyDeviceBciBackend";
 
 registerBciBackend("my-device", (config, log) => {
@@ -73,7 +73,7 @@ registerBciBackend("my-device", (config, log) => {
   return new MyDeviceBciBackend(/* … */, log);
 });
 
-const bridge = new NeuroBridge({
+const bridge = new NeuraRoboBridge({
   bciBackend: "my-device",
   robotBackend: "simulated-arm",
 });
@@ -82,7 +82,7 @@ const bridge = new NeuroBridge({
 ### 3. Or pass an instance
 
 ```ts
-const bridge = new NeuroBridge({
+const bridge = new NeuraRoboBridge({
   bciBackend: "my-device", // label only
   backends: {
     bci: new MyDeviceBciBackend(),
@@ -93,7 +93,7 @@ const bridge = new NeuroBridge({
 
 ### Future hardware note
 
-When high-bandwidth implants (Neuralink-class and competitors) ship developer APIs, implement them as separate packages that depend on `neurobridge` and call `registerBciBackend`. Do not invent fake vendor protocols in core.
+When high-bandwidth implants (Neuralink-class and competitors) ship developer APIs, implement them as separate packages that depend on `neurarobobridge` and call `registerBciBackend`. Do not invent fake vendor protocols in core.
 
 ---
 
@@ -102,8 +102,8 @@ When high-bandwidth implants (Neuralink-class and competitors) ship developer AP
 ### 1. Implement `RobotBackend`
 
 ```ts
-import type { RobotBackend } from "neurobridge";
-import type { RobotCommand, RobotState } from "neurobridge";
+import type { RobotBackend } from "neurarobobridge";
+import type { RobotCommand, RobotState } from "neurarobobridge";
 
 export class MyRobotBackend implements RobotBackend {
   readonly id = "my-robot";
@@ -187,12 +187,12 @@ export class MyRobotBackend implements RobotBackend {
 ### 2. Register
 
 ```ts
-import { registerRobotBackend, NeuroBridge } from "neurobridge";
+import { registerRobotBackend, NeuraRoboBridge } from "neurarobobridge";
 import { MyRobotBackend } from "./MyRobotBackend";
 
 registerRobotBackend("my-robot", (config, log) => new MyRobotBackend(config, log));
 
-const bridge = new NeuroBridge({
+const bridge = new NeuraRoboBridge({
   bciBackend: "simulator",
   robotBackend: "my-robot",
 });
@@ -207,7 +207,7 @@ A ROS 2 backend would typically:
 3. Subscribe to `/joint_states` (or equivalent) and map into `RobotState`.  
 4. Bind `emergencyStop()` to a stop topic or service.
 
-Ship it as an optional package (e.g. `neurobridge-ros2`) so core stays browser-safe and dependency-free.
+Ship it as an optional package (e.g. `neurarobobridge-ros2`) so core stays browser-safe and dependency-free.
 
 ### Humanoid / Optimus-style adapters (future)
 
@@ -223,12 +223,12 @@ Use `simulated-humanoid` as the behavioral stand-in today (`navigate`, dual-arm-
 ## Testing a new backend
 
 ```ts
-import { NeuroBridge } from "neurobridge";
-import { registerRobotBackend } from "neurobridge";
+import { NeuraRoboBridge } from "neurarobobridge";
+import { registerRobotBackend } from "neurarobobridge";
 
 registerRobotBackend("my-robot", () => new MyRobotBackend());
 
-const bridge = new NeuroBridge({
+const bridge = new NeuraRoboBridge({
   bciBackend: "manual",
   robotBackend: "my-robot",
   logLevel: "silent",

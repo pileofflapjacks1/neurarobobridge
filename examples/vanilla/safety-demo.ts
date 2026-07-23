@@ -4,10 +4,10 @@
  * Run: npx tsx examples/vanilla/safety-demo.ts
  */
 
-import { NeuroBridge } from "../../src/index.js";
+import { NeuraRoboBridge } from "../../src/index.js";
 
 async function main() {
-  const bridge = new NeuroBridge({
+  const bridge = new NeuraRoboBridge({
     bciBackend: "manual",
     robotBackend: "simulated-arm",
     logLevel: "info",

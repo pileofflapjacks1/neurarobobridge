@@ -1,4 +1,4 @@
-export { NeuroBridge } from "./NeuroBridge.js";
+export { NeuraRoboBridge } from "./NeuraRoboBridge.js";
 export { TypedEventEmitter } from "./EventEmitter.js";
 export { Logger } from "./Logger.js";
 export { translateIntention } from "./Translator.js";

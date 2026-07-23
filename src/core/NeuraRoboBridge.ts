@@ -1,8 +1,8 @@
 /**
- * NeuroBridge — public API façade.
+ * NeuraRoboBridge — public API façade.
  *
  * Apps never talk to raw BCI hardware or robot drivers.
- * NeuroBridge is the safety-conscious translation layer between
+ * NeuraRoboBridge is the safety-conscious translation layer between
  * human neural intention and physical robot action.
  */
 
@@ -30,8 +30,8 @@ import { PlaybackBciBackend } from "../bci/PlaybackBciBackend.js";
 import { resolveScenario } from "../bci/scenarios.js";
 import { SimulatedArmBackend } from "../robot/SimulatedArmBackend.js";
 import { SimulatedHumanoidBackend } from "../robot/SimulatedHumanoidBackend.js";
-import type { NeuroBridgeConfig, ScenarioStep } from "../types/config.js";
-import type { NeuroBridgeEvents, BridgeStatus } from "../types/events.js";
+import type { NeuraRoboBridgeConfig, ScenarioStep } from "../types/config.js";
+import type { NeuraRoboBridgeEvents, BridgeStatus } from "../types/events.js";
 import type { NeuralIntention, IntentionInput, ConfirmPayload } from "../types/intention.js";
 import type { RobotState, RobotCommand } from "../types/robot.js";
 import type { SafetyConfig, SafetyStatus } from "../types/safety.js";
@@ -44,7 +44,7 @@ import type { ActiveTask, PendingConfirmation, TaskPayload } from "../types/task
 registerBuiltinBciBackends();
 registerBuiltinRobotBackends();
 
-export class NeuroBridge extends TypedEventEmitter<NeuroBridgeEvents> {
+export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
   private config: ReturnType<typeof resolveConfig>;
   private log: Logger;
   private safety: SafetyEngine;
@@ -60,12 +60,12 @@ export class NeuroBridge extends TypedEventEmitter<NeuroBridgeEvents> {
   private activeTask: ActiveTask | null = null;
   private confirmTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(config: NeuroBridgeConfig = {}) {
+  constructor(config: NeuraRoboBridgeConfig = {}) {
     super();
     this.config = resolveConfig(config);
     this.log = new Logger(
       this.config.debug ? "debug" : this.config.logLevel,
-      "[NeuroBridge]"
+      "[NeuraRoboBridge]"
     );
     const safetyCfg = this.config.safety ?? {};
     this.safety = new SafetyEngine(safetyCfg, this.log.child(":safety"));
@@ -826,7 +826,7 @@ export class NeuroBridge extends TypedEventEmitter<NeuroBridgeEvents> {
 
   private assertAlive(): void {
     if (this.disposed) {
-      throw new Error("NeuroBridge has been disposed");
+      throw new Error("NeuraRoboBridge has been disposed");
     }
   }
 }

@@ -121,7 +121,7 @@ export class SafetyEngine {
       controlMode: this.controlMode,
       watchdogAlive: this.watchdogAlive,
       lastIntentionAt: this.lastIntentionAt,
-      pendingConfirmations: 0, // filled by NeuroBridge if needed
+      pendingConfirmations: 0, // filled by NeuraRoboBridge if needed
       recentInterventions: this.recentInterventions.length,
       lastIntervention: this.recentInterventions[this.recentInterventions.length - 1],
       config: {
@@ -489,7 +489,7 @@ export class SafetyEngine {
 
     // 11. Needs confirm? (caller creates pending confirmation)
     if (!opts?.skipConfirmGate) {
-      // Marker only — ConfirmManager consulted by NeuroBridge
+      // Marker only — ConfirmManager consulted by NeuraRoboBridge
       // We expose via optional flag from outside; here just continue
     }
 

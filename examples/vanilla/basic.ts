@@ -1,13 +1,13 @@
 /**
- * Basic NeuroBridge demo — simulator BCI → simulated arm.
+ * Basic NeuraRoboBridge demo — simulator BCI → simulated arm.
  *
  * Run: npx tsx examples/vanilla/basic.ts
  */
 
-import { NeuroBridge } from "../../src/index.js";
+import { NeuraRoboBridge } from "../../src/index.js";
 
 async function main() {
-  const bridge = new NeuroBridge({
+  const bridge = new NeuraRoboBridge({
     bciBackend: "simulator",
     robotBackend: "simulated-arm",
     debug: true,

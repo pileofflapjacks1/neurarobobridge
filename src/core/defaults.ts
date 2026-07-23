@@ -1,4 +1,4 @@
-import type { NeuroBridgeConfig, BciSimulatorConfig, SimulatedArmConfig } from "../types/config.js";
+import type { NeuraRoboBridgeConfig, BciSimulatorConfig, SimulatedArmConfig } from "../types/config.js";
 import type { SafetyConfig } from "../types/safety.js";
 import type { WorkspaceLimits, JointLimits } from "../types/robot.js";
 
@@ -107,14 +107,14 @@ export const DEFAULT_SIMULATED_ARM: Required<
 };
 
 export function resolveConfig(
-  partial: NeuroBridgeConfig = {}
+  partial: NeuraRoboBridgeConfig = {}
 ): Required<
   Pick<
-    NeuroBridgeConfig,
+    NeuraRoboBridgeConfig,
     "bciBackend" | "robotBackend" | "logLevel" | "debug" | "recording"
   >
 > &
-  NeuroBridgeConfig {
+  NeuraRoboBridgeConfig {
   return {
     bciBackend: partial.bciBackend ?? "simulator",
     robotBackend: partial.robotBackend ?? "simulated-arm",

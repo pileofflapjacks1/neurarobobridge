@@ -4,7 +4,7 @@
  */
 
 import type { BciBackend, BciBackendStatus } from "./types.js";
-import type { NeuroBridgeConfig } from "../types/config.js";
+import type { NeuraRoboBridgeConfig } from "../types/config.js";
 import type { NeuralIntention } from "../types/intention.js";
 import type { SessionRecording } from "../types/session.js";
 import type { Logger } from "../core/Logger.js";
@@ -23,7 +23,7 @@ export class PlaybackBciBackend implements BciBackend {
   private playing = false;
 
   constructor(
-    _config: NeuroBridgeConfig,
+    _config: NeuraRoboBridgeConfig,
     private log?: Logger
   ) {
     // Optional: load from config.meta if present later

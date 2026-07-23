@@ -1,12 +1,12 @@
 import type { RobotBackend } from "./types.js";
-import type { NeuroBridgeConfig } from "../types/config.js";
+import type { NeuraRoboBridgeConfig } from "../types/config.js";
 import type { Logger } from "../core/Logger.js";
 import { SimulatedArmBackend } from "./SimulatedArmBackend.js";
 import { SimulatedHumanoidBackend } from "./SimulatedHumanoidBackend.js";
 import { NullRobotBackend } from "./NullRobotBackend.js";
 
 export type RobotBackendFactory = (
-  config: NeuroBridgeConfig,
+  config: NeuraRoboBridgeConfig,
   log: Logger
 ) => RobotBackend;
 
@@ -20,7 +20,7 @@ export function registerRobotBackend(
 }
 
 export function createRobotBackend(
-  config: NeuroBridgeConfig,
+  config: NeuraRoboBridgeConfig,
   log: Logger
 ): RobotBackend {
   if (config.backends?.robot && isRobotBackend(config.backends.robot)) {

@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { NeuroBridge } from "../src/core/NeuroBridge.js";
+import { NeuraRoboBridge } from "../src/core/NeuraRoboBridge.js";
 import type { NeuralIntention } from "../src/types/intention.js";
 import type { RobotCommand } from "../src/types/robot.js";
 import type { SafetyEvent } from "../src/types/safety.js";
 
-describe("NeuroBridge", () => {
-  let bridge: NeuroBridge;
+describe("NeuraRoboBridge", () => {
+  let bridge: NeuraRoboBridge;
 
   beforeEach(() => {
-    bridge = new NeuroBridge({
+    bridge = new NeuraRoboBridge({
       bciBackend: "manual",
       robotBackend: "simulated-arm",
       logLevel: "silent",
@@ -96,7 +96,7 @@ describe("NeuroBridge", () => {
   });
 
   it("records a session", async () => {
-    bridge = new NeuroBridge({
+    bridge = new NeuraRoboBridge({
       bciBackend: "manual",
       robotBackend: "null",
       logLevel: "silent",
@@ -116,7 +116,7 @@ describe("NeuroBridge", () => {
   });
 
   it("playScenario runs pick-place on simulator", async () => {
-    bridge = new NeuroBridge({
+    bridge = new NeuraRoboBridge({
       bciBackend: "simulator",
       robotBackend: "null",
       logLevel: "silent",

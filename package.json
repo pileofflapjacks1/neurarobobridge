@@ -1,9 +1,9 @@
 {
-  "name": "neurobridge",
+  "name": "neurarobobridge",
   "version": "0.2.0",
   "description": "Production-quality BCI-to-Robot connector / middleware. Translates high-level neural intentions into safe robot control commands with simulator-first development.",
   "license": "MIT",
-  "author": "NeuroBridge Contributors",
+  "author": "NeuraRoboBridge Contributors",
   "keywords": [
     "bci",
     "brain-computer-interface",
@@ -18,12 +18,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/pileofflapjacks1/neurobridge.git"
+    "url": "https://github.com/pileofflapjacks1/neurarobobridge.git"
   },
   "bugs": {
-    "url": "https://github.com/pileofflapjacks1/neurobridge/issues"
+    "url": "https://github.com/pileofflapjacks1/neurarobobridge/issues"
   },
-  "homepage": "https://github.com/pileofflapjacks1/neurobridge#readme",
+  "homepage": "https://github.com/pileofflapjacks1/neurarobobridge#readme",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

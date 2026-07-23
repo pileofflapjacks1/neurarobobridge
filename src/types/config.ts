@@ -1,5 +1,5 @@
 /**
- * Top-level NeuroBridge configuration.
+ * Top-level NeuraRoboBridge configuration.
  */
 
 import type { SafetyConfig } from "./safety.js";
@@ -94,9 +94,9 @@ export interface RecordingConfig {
 export type LogLevel = "debug" | "info" | "warn" | "error" | "silent";
 
 /**
- * Primary configuration object for `new NeuroBridge(config)`.
+ * Primary configuration object for `new NeuraRoboBridge(config)`.
  */
-export interface NeuroBridgeConfig {
+export interface NeuraRoboBridgeConfig {
   /** BCI input backend id or instance. Default "simulator". */
   bciBackend?: BciBackendId;
   /** Robot output backend id or instance. Default "simulated-arm". */

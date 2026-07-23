@@ -11,7 +11,7 @@ const LEVEL_ORDER: Record<LogLevel, number> = {
 export class Logger {
   constructor(
     private level: LogLevel = "info",
-    private prefix = "[NeuroBridge]"
+    private prefix = "[NeuraRoboBridge]"
   ) {}
 
   setLevel(level: LogLevel): void {

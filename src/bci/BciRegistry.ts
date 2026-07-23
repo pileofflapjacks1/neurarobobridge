@@ -1,12 +1,12 @@
 import type { BciBackend } from "./types.js";
-import type { NeuroBridgeConfig } from "../types/config.js";
+import type { NeuraRoboBridgeConfig } from "../types/config.js";
 import type { Logger } from "../core/Logger.js";
 import { SimulatorBciBackend } from "./SimulatorBciBackend.js";
 import { PlaybackBciBackend } from "./PlaybackBciBackend.js";
 import { ManualBciBackend } from "./ManualBciBackend.js";
 
 export type BciBackendFactory = (
-  config: NeuroBridgeConfig,
+  config: NeuraRoboBridgeConfig,
   log: Logger
 ) => BciBackend;
 
@@ -17,7 +17,7 @@ export function registerBciBackend(id: string, factory: BciBackendFactory): void
 }
 
 export function createBciBackend(
-  config: NeuroBridgeConfig,
+  config: NeuraRoboBridgeConfig,
   log: Logger
 ): BciBackend {
   if (config.backends?.bci && isBciBackend(config.backends.bci)) {

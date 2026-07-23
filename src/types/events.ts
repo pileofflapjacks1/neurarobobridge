@@ -1,5 +1,5 @@
 /**
- * Event map for the NeuroBridge public EventEmitter API.
+ * Event map for the NeuraRoboBridge public EventEmitter API.
  */
 
 import type { NeuralIntention } from "./intention.js";
@@ -42,7 +42,7 @@ export interface ControlModeEvent {
 /**
  * Typed event map. `bridge.on("intention", (i) => ...)` is fully typed.
  */
-export interface NeuroBridgeEvents {
+export interface NeuraRoboBridgeEvents {
   intention: (intention: NeuralIntention) => void;
   /** Intention accepted and translated into a robot command. */
   command: (command: RobotCommand) => void;
@@ -69,4 +69,4 @@ export interface NeuroBridgeEvents {
   latency: (sample: LatencySample) => void;
 }
 
-export type NeuroBridgeEventName = keyof NeuroBridgeEvents;
+export type NeuraRoboBridgeEventName = keyof NeuraRoboBridgeEvents;

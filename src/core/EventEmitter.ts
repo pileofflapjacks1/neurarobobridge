@@ -41,7 +41,7 @@ export class TypedEventEmitter<Events extends { [K in keyof Events]: Handler }> 
         handler(...args);
       } catch (err) {
         // Never let a subscriber crash the bus
-        console.error(`[NeuroBridge] listener error on "${String(event)}":`, err);
+        console.error(`[NeuraRoboBridge] listener error on "${String(event)}":`, err);
       }
     }
   }

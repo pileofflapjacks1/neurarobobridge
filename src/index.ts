@@ -1,10 +1,10 @@
 /**
- * NeuroBridge — BCI-to-Robot connector / middleware.
+ * NeuraRoboBridge — BCI-to-Robot connector / middleware.
  *
  * @packageDocumentation
  */
 
-export { NeuroBridge } from "./core/NeuroBridge.js";
+export { NeuraRoboBridge } from "./core/NeuraRoboBridge.js";
 
 export {
   TypedEventEmitter,
@@ -108,13 +108,13 @@ export type {
   SimulatedHumanoidConfig,
   RecordingConfig,
   LogLevel,
-  NeuroBridgeConfig,
+  NeuraRoboBridgeConfig,
   BridgeStatus,
   BridgeStatusEvent,
   BridgeErrorEvent,
   ControlModeEvent,
-  NeuroBridgeEvents,
-  NeuroBridgeEventName,
+  NeuraRoboBridgeEvents,
+  NeuraRoboBridgeEventName,
   SessionEventType,
   SessionMarker,
   SessionEvent,

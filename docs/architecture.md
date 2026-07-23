@@ -1,6 +1,6 @@
-# NeuroBridge Architecture
+# NeuraRoboBridge Architecture
 
-This document is the contributor map for NeuroBridge: data flow, module boundaries, and how safety sits in the middle.
+This document is the contributor map for NeuraRoboBridge: data flow, module boundaries, and how safety sits in the middle.
 
 ## Goals (non-negotiable)
 
@@ -15,7 +15,7 @@ This document is the contributor map for NeuroBridge: data flow, module boundari
 ```
 BCI Backend                Core                         Robot Backend
 ───────────                ────                         ─────────────
-NeuralIntention ──onIntention──▶ NeuroBridge
+NeuralIntention ──onIntention──▶ NeuraRoboBridge
                                       │
                                       ├─ emit("intention")
                                       ├─ SessionRecorder.recordIntention
@@ -48,7 +48,7 @@ NeuralIntention ──onIntention──▶ NeuroBridge
 | Path | Responsibility |
 |------|----------------|
 | `src/types/` | Shared contracts: intentions, robot commands/state, safety, config, events, session |
-| `src/core/NeuroBridge.ts` | Public façade, wiring, lifecycle |
+| `src/core/NeuraRoboBridge.ts` | Public façade, wiring, lifecycle |
 | `src/core/Translator.ts` | Pure intention → command mapping |
 | `src/core/EventEmitter.ts` | Typed pub/sub (zero deps) |
 | `src/core/Logger.ts` | Level-filtered console logging |
@@ -89,7 +89,7 @@ Every intervention: `reason`, `severity`, `message`, optional ids.
 
 ## Safety evaluation order
 
-Implemented in `SafetyEngine.evaluate` (+ NeuroBridge confirm/watchdog layers):
+Implemented in `SafetyEngine.evaluate` (+ NeuraRoboBridge confirm/watchdog layers):
 
 1. Emergency stop latch  
 2. **Stale intention TTL** (`maxIntentionAgeMs` / `maxTaskAgeMs`)  
@@ -104,7 +104,7 @@ Implemented in `SafetyEngine.evaluate` (+ NeuroBridge confirm/watchdog layers):
 11. Joint limit rejection (joint-space commands)  
 12. `maxSpeed` clamp  
 
-**Outside evaluate (NeuroBridge):**
+**Outside evaluate (NeuraRoboBridge):**
 
 - **ConfirmManager** — high-risk task / navigate → `pendingConfirm` → `confirm` / `reject` / timeout  
 - **Watchdog** — BCI silence while control enabled → fail-safe stop or e-stop  
@@ -174,18 +174,18 @@ Good enough for application development and safety testing; not a substitute for
 
 ## Relationship to NeuralBridge
 
-| | NeuralBridge | NeuroBridge |
+| | NeuralBridge | NeuraRoboBridge |
 |--|--------------|-------------|
 | Focus | BCI → application intents / UI actions | BCI intentions → **robot** commands |
 | Safety | Policies / cooldowns for app actions | Physical safety (e-stop, workspace, joints) |
 | Output | App events / vocabulary | `RobotCommand` + robot state |
 
-A production stack may use NeuralBridge (or similar) for decoding/classification, then feed high-level intents into NeuroBridge for robot execution. NeuroBridge can also stand alone with its own simulator.
+A production stack may use NeuralBridge (or similar) for decoding/classification, then feed high-level intents into NeuraRoboBridge for robot execution. NeuraRoboBridge can also stand alone with its own simulator.
 
 ## Testing strategy
 
 - **Unit:** SafetyEngine, Translator, individual backends  
-- **Integration:** `NeuroBridge` with `manual` BCI + `simulated-arm` / `null`  
+- **Integration:** `NeuraRoboBridge` with `manual` BCI + `simulated-arm` / `null`  
 - **Scenarios:** simulator `pick-place`, `safety-stress`  
 
 Prefer deterministic seeds (`bciSimulator.seed`) in tests.

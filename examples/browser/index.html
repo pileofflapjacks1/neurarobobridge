@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>NeuroBridge — Browser Demo</title>
+    <title>NeuraRoboBridge — Browser Demo</title>
     <style>
       :root {
         color-scheme: dark;
@@ -150,7 +150,7 @@
   </head>
   <body>
     <header>
-      <h1>NeuroBridge</h1>
+      <h1>NeuraRoboBridge</h1>
       <p>BCI → Safety → Robot · browser simulator demo</p>
     </header>
     <main>
@@ -207,12 +207,12 @@
     <script type="importmap">
       {
         "imports": {
-          "neurobridge": "../../dist/index.js"
+          "neurarobobridge": "../../dist/index.js"
         }
       }
     </script>
     <script type="module">
-      import { NeuroBridge } from "neurobridge";
+      import { NeuraRoboBridge } from "neurarobobridge";
 
       const logEl = document.getElementById("log");
       const statusEl = document.getElementById("status");
@@ -226,7 +226,7 @@
         logEl.prepend(line);
       }
 
-      const bridge = new NeuroBridge({
+      const bridge = new NeuraRoboBridge({
         bciBackend: "manual",
         robotBackend: "simulated-arm",
         logLevel: "warn",

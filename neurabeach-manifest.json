@@ -1,0 +1,17 @@
+{
+  "name": "neurobridge",
+  "displayName": "NeuroBridge",
+  "version": "0.2.0",
+  "description": "BCI-to-Robot connector / middleware with safety-first translation and simulator backends.",
+  "suite": "Neura Suite",
+  "category": "neuro-robotics",
+  "safetyClass": "physical-control",
+  "inputs": ["neural-intention", "bci-simulator", "session-playback"],
+  "outputs": ["robot-command", "robot-state", "safety-event"],
+  "hardwareTargets": {
+    "bci": ["simulator", "future-high-bandwidth-bci"],
+    "robot": ["simulated-arm", "simulated-humanoid", "future-ros2", "future-humanoid"]
+  },
+  "simulatorFirst": true,
+  "related": ["neuralbridge", "neurabinder", "neurabeach"]
+}

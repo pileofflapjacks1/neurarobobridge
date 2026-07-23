@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NeuroBridge — Browser Demo</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0f14;
+        --panel: #141b24;
+        --border: #243041;
+        --text: #e7eef7;
+        --muted: #8aa0b8;
+        --accent: #3dd6c6;
+        --warn: #f0b429;
+        --danger: #ff5d6c;
+        --ok: #5ddea0;
+        font-family: "IBM Plex Sans", system-ui, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(1200px 600px at 10% -10%, #153043, transparent),
+          radial-gradient(900px 500px at 100% 0%, #1a1530, transparent), var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+      header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: baseline;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1.25rem;
+        letter-spacing: 0.02em;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      main {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 1rem;
+        padding: 1rem;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      @media (max-width: 800px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+      .panel {
+        background: color-mix(in srgb, var(--panel) 92%, black);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem;
+      }
+      .panel h2 {
+        margin: 0 0 0.75rem;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+      }
+      button {
+        background: #1c2836;
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.45rem 0.75rem;
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.85rem;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button.primary {
+        background: #134e4a;
+        border-color: var(--accent);
+      }
+      button.danger {
+        background: #3f1520;
+        border-color: var(--danger);
+        color: #ffc9cf;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .status {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      .status strong {
+        color: var(--accent);
+      }
+      #viz {
+        width: 100%;
+        height: 360px;
+        background: #0a1018;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        display: block;
+      }
+      #log {
+        height: 220px;
+        overflow: auto;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.75rem;
+        line-height: 1.45;
+        color: var(--muted);
+        white-space: pre-wrap;
+      }
+      .tag-ok {
+        color: var(--ok);
+      }
+      .tag-warn {
+        color: var(--warn);
+      }
+      .tag-err {
+        color: var(--danger);
+      }
+      kbd {
+        background: #1c2836;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 0.1rem 0.35rem;
+        font-size: 0.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>NeuroBridge</h1>
+      <p>BCI → Safety → Robot · browser simulator demo</p>
+    </header>
+    <main>
+      <section class="panel">
+        <h2>Control</h2>
+        <div class="row">
+          <button id="btnConnect" class="primary">Connect</button>
+          <button id="btnEnable" disabled>Enable control</button>
+          <button id="btnDisable" disabled>Disable</button>
+        </div>
+        <div class="row">
+          <button id="btnEstop" class="danger" disabled>E-STOP</button>
+          <button id="btnClear" disabled>Clear E-Stop</button>
+        </div>
+        <h2>Intentions</h2>
+        <div class="row">
+          <button class="intent" data-kind="home" disabled>Home</button>
+          <button class="intent" data-kind="grasp" disabled>Grasp</button>
+          <button class="intent" data-kind="release" disabled>Release</button>
+          <button class="intent" data-kind="stop" disabled>Stop</button>
+        </div>
+        <div class="row">
+          <button class="intent" data-kind="move" data-dir="left" disabled>←</button>
+          <button class="intent" data-kind="move" data-dir="up" disabled>↑</button>
+          <button class="intent" data-kind="move" data-dir="down" disabled>↓</button>
+          <button class="intent" data-kind="move" data-dir="right" disabled>→</button>
+          <button class="intent" data-kind="move" data-dir="forward" disabled>Fwd</button>
+          <button class="intent" data-kind="move" data-dir="back" disabled>Back</button>
+        </div>
+        <div class="row">
+          <button id="btnScenario" disabled>Play pick-place</button>
+          <button id="btnLowConf" disabled>Inject low conf</button>
+        </div>
+        <p class="status" style="margin-top: 0.5rem">
+          Keys: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move ·
+          <kbd>G</kbd> grasp · <kbd>R</kbd> release · <kbd>H</kbd> home ·
+          <kbd>Space</kbd> stop · <kbd>Esc</kbd> e-stop
+        </p>
+        <h2>Status</h2>
+        <div id="status" class="status">Disconnected</div>
+      </section>
+      <section class="panel">
+        <h2>Simulated arm</h2>
+        <canvas id="viz" width="800" height="360"></canvas>
+        <h2 style="margin-top: 1rem">Event log</h2>
+        <div id="log"></div>
+      </section>
+    </main>
+
+    <!--
+      For a zero-build demo, open after `npm run build` and serve the repo root,
+      or use a bundler. This script uses an import map pointing at dist.
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "neurobridge": "../../dist/index.js"
+        }
+      }
+    </script>
+    <script type="module">
+      import { NeuroBridge } from "neurobridge";
+
+      const logEl = document.getElementById("log");
+      const statusEl = document.getElementById("status");
+      const canvas = document.getElementById("viz");
+      const ctx = canvas.getContext("2d");
+
+      function log(msg, cls = "") {
+        const line = document.createElement("div");
+        if (cls) line.className = cls;
+        line.textContent = `${new Date().toISOString().slice(11, 19)} ${msg}`;
+        logEl.prepend(line);
+      }
+
+      const bridge = new NeuroBridge({
+        bciBackend: "manual",
+        robotBackend: "simulated-arm",
+        logLevel: "warn",
+        safety: {
+          minConfidence: 0.75,
+          maxIntentionsPerSecond: 15,
+          minCommandIntervalMs: 40,
+          enableEmergencyStop: true,
+        },
+        simulatedArm: { tickHz: 30 },
+      });
+
+      let lastState = null;
+
+      bridge.on("status", (e) => {
+        statusEl.innerHTML = `<strong>${e.status}</strong>${
+          e.message ? ` — ${e.message}` : ""
+        }<br/>control=${bridge.isControlEnabled()} estop=${bridge.isEmergencyStopActive()}`;
+        log(`status ${e.status}`, "tag-ok");
+        syncButtons();
+      });
+      bridge.on("intention", (i) => log(`intention ${i.kind} conf=${i.confidence.toFixed(2)}`));
+      bridge.on("command", (c) => log(`command ${c.kind}`, "tag-ok"));
+      bridge.on("intentionRejected", (i, r) => log(`rejected ${i.kind}: ${r}`, "tag-warn"));
+      bridge.on("safetyEvent", (e) =>
+        log(`safety ${e.reason}: ${e.message}`, e.severity === "critical" ? "tag-err" : "tag-warn")
+      );
+      bridge.on("robotState", (s) => {
+        lastState = s;
+        draw(s);
+      });
+
+      function syncButtons() {
+        const connected = bridge.isConnected();
+        const enabled = bridge.isControlEnabled();
+        document.getElementById("btnConnect").disabled = connected;
+        document.getElementById("btnEnable").disabled = !connected || enabled || bridge.isEmergencyStopActive();
+        document.getElementById("btnDisable").disabled = !connected || !enabled;
+        document.getElementById("btnEstop").disabled = !connected;
+        document.getElementById("btnClear").disabled = !connected || !bridge.isEmergencyStopActive();
+        document.getElementById("btnScenario").disabled = !connected;
+        document.getElementById("btnLowConf").disabled = !connected;
+        document.querySelectorAll(".intent").forEach((b) => {
+          b.disabled = !connected;
+        });
+      }
+
+      document.getElementById("btnConnect").onclick = async () => {
+        await bridge.connect();
+      };
+      document.getElementById("btnEnable").onclick = async () => {
+        try {
+          await bridge.enableControl();
+        } catch (e) {
+          log(String(e), "tag-err");
+        }
+      };
+      document.getElementById("btnDisable").onclick = () => bridge.disableControl();
+      document.getElementById("btnEstop").onclick = () => bridge.emergencyStop("UI e-stop");
+      document.getElementById("btnClear").onclick = () => bridge.clearEmergencyStop();
+
+      const dirs = {
+        left: { x: 0, y: 0.08, z: 0 },
+        right: { x: 0, y: -0.08, z: 0 },
+        up: { x: 0, y: 0, z: 0.08 },
+        down: { x: 0, y: 0, z: -0.08 },
+        forward: { x: 0.08, y: 0, z: 0 },
+        back: { x: -0.08, y: 0, z: 0 },
+      };
+
+      document.querySelectorAll(".intent").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const kind = btn.dataset.kind;
+          if (kind === "move") {
+            const d = dirs[btn.dataset.dir] || { x: 0.1, y: 0, z: 0 };
+            bridge.injectIntention({
+              kind: "move",
+              confidence: 0.92,
+              payload: { target: d, relative: true, speed: 0.5 },
+            });
+          } else if (kind === "grasp") {
+            bridge.injectIntention({
+              kind: "grasp",
+              confidence: 0.9,
+              payload: { force: 0.6 },
+            });
+          } else if (kind === "release") {
+            bridge.injectIntention({ kind: "release", confidence: 0.9, payload: {} });
+          } else {
+            bridge.injectIntention({ kind, confidence: 0.95 });
+          }
+        });
+      });
+
+      document.getElementById("btnLowConf").onclick = () => {
+        bridge.injectIntention({
+          kind: "move",
+          confidence: 0.3,
+          payload: { target: { x: 0.2, y: 0, z: 0.3 } },
+        });
+      };
+
+      document.getElementById("btnScenario").onclick = () => {
+        // Switch-style: inject pick-place steps manually since we use manual BCI
+        const steps = [
+          { kind: "home", confidence: 0.95 },
+          {
+            kind: "move",
+            confidence: 0.9,
+            payload: { target: { x: 0.35, y: 0.1, z: 0.35 }, speed: 0.5 },
+          },
+          { kind: "grasp", confidence: 0.92, payload: { force: 0.6 } },
+          {
+            kind: "move",
+            confidence: 0.9,
+            payload: { target: { x: -0.25, y: 0.15, z: 0.4 }, speed: 0.5 },
+          },
+          { kind: "release", confidence: 0.93, payload: {} },
+          { kind: "home", confidence: 0.95 },
+        ];
+        let t = 0;
+        for (const s of steps) {
+          setTimeout(() => bridge.injectIntention(s), t);
+          t += 900;
+        }
+      };
+
+      window.addEventListener("keydown", (ev) => {
+        if (ev.target.matches("input,textarea")) return;
+        const map = {
+          w: () =>
+            bridge.injectIntention({
+              kind: "move",
+              confidence: 0.9,
+              payload: { target: { x: 0.08, y: 0, z: 0 }, relative: true },
+            }),
+          s: () =>
+            bridge.injectIntention({
+              kind: "move",
+              confidence: 0.9,
+              payload: { target: { x: -0.08, y: 0, z: 0 }, relative: true },
+            }),
+          a: () =>
+            bridge.injectIntention({
+              kind: "move",
+              confidence: 0.9,
+              payload: { target: { x: 0, y: 0.08, z: 0 }, relative: true },
+            }),
+          d: () =>
+            bridge.injectIntention({
+              kind: "move",
+              confidence: 0.9,
+              payload: { target: { x: 0, y: -0.08, z: 0 }, relative: true },
+            }),
+          g: () =>
+            bridge.injectIntention({
+              kind: "grasp",
+              confidence: 0.9,
+              payload: { force: 0.6 },
+            }),
+          r: () =>
+            bridge.injectIntention({ kind: "release", confidence: 0.9, payload: {} }),
+          h: () => bridge.injectIntention({ kind: "home", confidence: 0.95 }),
+          " ": () => bridge.injectIntention({ kind: "stop", confidence: 0.99 }),
+          Escape: () => bridge.emergencyStop("keyboard"),
+        };
+        const fn = map[ev.key.length === 1 ? ev.key.toLowerCase() : ev.key];
+        if (fn) {
+          ev.preventDefault();
+          fn();
+        }
+      });
+
+      function draw(state) {
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.fillStyle = "#0a1018";
+        ctx.fillRect(0, 0, w, h);
+
+        // Workspace grid
+        ctx.strokeStyle = "#1c2a3a";
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 10; i++) {
+          const x = (i / 9) * w;
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+          const y = (i / 9) * h;
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+
+        const p = state.pose?.position;
+        if (!p) return;
+
+        // Map meters to canvas (top-down X/Y, height as size)
+        const sx = w / 2 + p.x * 280;
+        const sy = h / 2 - p.y * 280;
+        const r = 10 + p.z * 18;
+
+        // Base
+        ctx.fillStyle = "#243041";
+        ctx.beginPath();
+        ctx.arc(w / 2, h / 2, 14, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Link line
+        ctx.strokeStyle = "#3dd6c6";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(w / 2, h / 2);
+        ctx.lineTo(sx, sy);
+        ctx.stroke();
+
+        // EE
+        const grip = state.grippers?.[0]?.open ?? 1;
+        ctx.fillStyle = grip < 0.3 ? "#f0b429" : "#5ddea0";
+        ctx.beginPath();
+        ctx.arc(sx, sy, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#8aa0b8";
+        ctx.font = "12px IBM Plex Mono, monospace";
+        ctx.fillText(
+          `mode=${state.mode}  ee=(${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})  grip=${grip.toFixed(2)}`,
+          12,
+          h - 14
+        );
+        if (state.mode === "estop") {
+          ctx.fillStyle = "#ff5d6c";
+          ctx.font = "bold 28px IBM Plex Sans, sans-serif";
+          ctx.fillText("E-STOP", w / 2 - 50, 40);
+        }
+      }
+
+      // Idle viz
+      draw({
+        mode: "disconnected",
+        pose: { position: { x: 0, y: 0, z: 0.3 } },
+        grippers: [{ name: "g", open: 1 }],
+        timestamp: Date.now(),
+      });
+      syncButtons();
+    </script>
+  </body>
+</html>

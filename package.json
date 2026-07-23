@@ -1,0 +1,68 @@
+{
+  "name": "neurobridge",
+  "version": "0.2.0",
+  "description": "Production-quality BCI-to-Robot connector / middleware. Translates high-level neural intentions into safe robot control commands with simulator-first development.",
+  "license": "MIT",
+  "author": "NeuroBridge Contributors",
+  "keywords": [
+    "bci",
+    "brain-computer-interface",
+    "robotics",
+    "neuro-robotics",
+    "middleware",
+    "safety",
+    "simulator",
+    "robotic-arm",
+    "humanoid",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pileofflapjacks1/neurobridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pileofflapjacks1/neurobridge/issues"
+  },
+  "homepage": "https://github.com/pileofflapjacks1/neurobridge#readme",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "example:basic": "tsx examples/vanilla/basic.ts",
+    "example:safety": "tsx examples/vanilla/safety-demo.ts",
+    "example:humanoid": "tsx examples/vanilla/humanoid-tasks.ts",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false
+}

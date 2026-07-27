@@ -40,7 +40,96 @@ NeuralBridge (optional)  ──adapter──▶  NeuraRoboBridge  ──▶  sim
 NeuralBridge focuses on delivering neural intent to **applications**.  
 NeuraRoboBridge focuses on turning intent into **physical (or simulated) robot action** with safety designed in.
 
-Catalog: [NeuraBeach · col-neura-suite](https://neurabeach.vercel.app/collections/col-neura-suite) · Upload notes: [`LISTING.md`](./LISTING.md) · Demo guide: [`docs/DEMO.md`](./docs/DEMO.md)
+Catalog: [NeuraBeach · col-neura-suite](https://neurabeach.vercel.app/collections/col-neura-suite) · Upload notes: [`LISTING.md`](./LISTING.md) · Demo guide: [`docs/DEMO.md`](./docs/DEMO.md) · **[FAQ](#faq--can-i-connect-my-neuralink)**
+
+---
+
+## FAQ — Can I connect my Neuralink?
+
+**Short answer: no — not to this GitHub project, and not the way people imagine “plug implant → repo.”**  
+That is not a missing install step. It is the **fundamental shape of the stack**.
+
+### The fundamental truth
+
+```
+┌─────────────────────────────┐
+│  Implant / clinical BCI     │  ← Owned by the device company (e.g. Neuralink)
+│  Surgery, firmware, trials  │     Clinical software. Not open GitHub USB.
+└──────────────┬──────────────┘
+               │  (only if/when they expose a *computer-side* intent stream)
+               ▼
+┌─────────────────────────────┐
+│  Computer-side apps & libs  │  ← This is where NeuraRoboBridge lives
+│  Decoded *intentions*       │     Safety, skills, robot commands, simulators
+│  GitHub, demos, APIs        │
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│  Robot / OS / UI backends   │  ← Simulated today; real robots later via plugins
+└─────────────────────────────┘
+```
+
+| Layer | Who owns it | Open source today? |
+|-------|-------------|--------------------|
+| Implant hardware & firmware | Device maker (Neuralink, etc.) | **No** |
+| Clinical / patient app stack | Device maker | **Usually no** |
+| **High-level intent → safe robot action** | **You + this middleware** | **Yes — this repo** |
+| Robot drivers (ROS, vendor SDKs) | Robot makers / you | Partial / future |
+
+**GitHub is not a Neuralink port.**  
+Cloning this repository does **not** authenticate, stream from, or control an implant.
+
+### What NeuraRoboBridge actually is
+
+- **Computer-side middleware** for the era when high-bandwidth BCIs and capable robots are common.
+- It consumes **high-level intentions** (`move`, `grasp`, `task`, confidence, …) — not raw spikes from a chip.
+- It enforces **safety** (enable gate, e-stop, confidence, timeouts, policies, skills).
+- It drives **robot backends** — today **simulators**; later real arms/humanoids via plugins.
+
+It is **not**:
+
+- Implant firmware or a medical device  
+- An official Neuralink (or Tesla Optimus) product  
+- A public “log in with your Neuralink” connector  
+
+### “How do I connect my Neuralink to the bridge?”
+
+| Situation | What to do |
+|-----------|------------|
+| You want to try the software | Use the **[live demo](https://neurarobobridge.vercel.app)** or `npm run demo` — **simulator only**, no implant. |
+| You are a Neuralink clinical user | Use **Neuralink’s own approved apps / stack**. This repo does not attach to the implant. |
+| You are a developer building for the future | Build against the **simulator** and the **BCI backend plugin API**. When a vendor publishes a **public computer-side** intent API, write a backend that maps it into `NeuralIntention` events. |
+| You expected Bluetooth-style pairing to GitHub | That model does not exist for these implants. The missing piece is a **vendor computer-side API**, not a cable. |
+
+### What would a real connection look like *later*?
+
+Only if a BCI company exposes something **on the computer** (intent stream, SDK, WebSocket, etc.):
+
+1. Their software (or SDK) produces **decoded intents** or control signals on the PC.  
+2. A **custom BCI backend** for this library maps those into NeuraRoboBridge intentions.  
+3. NeuraRoboBridge applies **safety** and talks to a **robot backend**.
+
+Until that public computer-side interface exists, **step 1 is not available to open source**. We deliberately do **not** invent a fake Neuralink protocol.
+
+### How apps in this suite fit together
+
+| Project | Job |
+|---------|-----|
+| **NeuraBeach** | Catalog / discover computer-side BCI tools |
+| **NeuralBridge** | BCI-style intents → **apps / UI** |
+| **NeuraRoboBridge** | Intents → **safe robot** commands |
+| **NeuraBinder / NeuraShell** | Example **products** using the computer-side path |
+
+All of them are **computer-side / research / simulation**. None of them are the implant.
+
+### Try it without any hardware
+
+```bash
+npm run demo
+# or open https://neurarobobridge.vercel.app
+```
+
+Connect → **Enable control** → skills / keyboard. Everything is simulated.
 
 ---
 

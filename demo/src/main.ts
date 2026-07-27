@@ -32,9 +32,11 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 
 app.innerHTML = `
   <div class="banner">
-    <strong>Simulator demo only.</strong>
-    Computer-side / research middleware — not implant software, not a medical device,
-    not affiliated with Neuralink, Tesla, or Optimus. No real robot hardware is connected.
+    <strong>Simulator demo only — not a Neuralink connection.</strong>
+    This is computer-side middleware (intentions → safe robot commands).
+    You cannot attach a real implant to this app or the GitHub repo.
+    Not implant firmware, not a medical device, not affiliated with Neuralink, Tesla, or Optimus.
+    <a href="https://github.com/pileofflapjacks1/neurarobobridge#faq--can-i-connect-my-neuralink" target="_blank" rel="noreferrer">FAQ: Can I connect my Neuralink?</a>
   </div>
 
   <div id="helpBanner" class="help-banner" role="alert">

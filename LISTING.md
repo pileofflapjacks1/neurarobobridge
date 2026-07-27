@@ -47,6 +47,8 @@ NeuraBeach (discover)
 - [x] No real high-bandwidth implant or commercial humanoid API claimed  
 - [x] `banned_claims: true` in manifest  
 
+**One-liner for confused users:** *GitHub ≠ Neuralink port. This is computer-side intent→robot middleware with simulators; there is no public implant connect API.* Full FAQ: README → “Can I connect my Neuralink?”
+
 ## Entrypoint (install)
 
 ```bash

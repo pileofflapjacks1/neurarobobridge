@@ -103,6 +103,23 @@ export interface SkillRuntimeConfig {
   defaultStepDelayMs?: number;
   /** Preempt running skill when a new task starts. Default true. */
   preempt?: boolean;
+  /**
+   * Default max ms for each skill step execute(). 0 = no timeout.
+   * Default 8000.
+   */
+  defaultStepTimeoutMs?: number;
+  /** Overall skill wall-clock timeout (ms). 0 = disabled. Default 60000. */
+  skillTimeoutMs?: number;
+  /**
+   * On step timeout / execute error: stop + open gripper.
+   * Default true.
+   */
+  safeFailRecovery?: boolean;
+  /**
+   * Mark skill as needs_help (and emit feedback) on timeout/execute error.
+   * Default true.
+   */
+  needsHelpOnFailure?: boolean;
   /** Extra skill definitions to register at construct time. */
   skills?: SkillDefinition[];
 }

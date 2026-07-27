@@ -110,13 +110,26 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
       {
         execute: (cmd) => this.executeSkillCommand(cmd),
         onUpdate: (skill) => this.onSkillUpdate(skill),
-        onFeedback: (kind, message, skill) => {
+        onFeedback: (kind, message, skill, meta) => {
           this.emitFeedback({
             kind: kind as RobotFeedback["kind"],
             message,
             taskId: skill.taskId,
             intentionId: skill.intentionId,
             progress: skill.progress,
+            severity:
+              kind === "needs_help" || kind === "task_failed"
+                ? "warning"
+                : "info",
+            meta: {
+              skillName: skill.skillName,
+              status: skill.status,
+              failureKind: skill.failureKind,
+              needsHelp: skill.needsHelp,
+              recoveryApplied: skill.recoveryApplied,
+              currentStepId: skill.currentStepId,
+              ...meta,
+            },
           });
         },
         log: (...args) => this.log.debug(...args),
@@ -124,6 +137,10 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
       {
         defaultStepDelayMs: this.config.skills?.defaultStepDelayMs,
         preempt: this.config.skills?.preempt,
+        defaultStepTimeoutMs: this.config.skills?.defaultStepTimeoutMs,
+        skillTimeoutMs: this.config.skills?.skillTimeoutMs,
+        safeFailRecovery: this.config.skills?.safeFailRecovery,
+        needsHelpOnFailure: this.config.skills?.needsHelpOnFailure,
       }
     );
     this.bci = createBciBackend(this.config, this.log.child(":bci"));
@@ -900,19 +917,20 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
 
   private onSkillUpdate(skill: ActiveSkill): void {
     this.emit("skill", skill);
+    const taskStatus =
+      skill.status === "running"
+        ? "running"
+        : skill.status === "succeeded"
+          ? "succeeded"
+          : skill.status === "cancelled"
+            ? "cancelled"
+            : skill.status === "failed" || skill.status === "needs_help"
+              ? "failed"
+              : "idle";
     this.activeTask = {
       id: skill.taskId,
       task: skill.skillName,
-      status:
-        skill.status === "running"
-          ? "running"
-          : skill.status === "succeeded"
-            ? "succeeded"
-            : skill.status === "cancelled"
-              ? "cancelled"
-              : skill.status === "failed"
-                ? "failed"
-                : "idle",
+      status: taskStatus,
       intentionId: skill.intentionId,
       startedAt: skill.startedAt,
       progress: skill.progress,
@@ -922,15 +940,14 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
       currentStepId: skill.currentStepId,
     };
     this.emit("task", this.activeTask);
-    if (skill.status !== "running") {
-      // Keep final task snapshot briefly then clear if terminal
-      if (
-        skill.status === "succeeded" ||
-        skill.status === "failed" ||
-        skill.status === "cancelled"
-      ) {
-        this.activeTask = null;
-      }
+    if (
+      skill.status === "succeeded" ||
+      skill.status === "failed" ||
+      skill.status === "cancelled" ||
+      skill.status === "needs_help"
+    ) {
+      // Terminal skill states — clear active task after emit
+      this.activeTask = null;
     }
   }
 

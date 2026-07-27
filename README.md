@@ -175,6 +175,19 @@ attachNeuralBridge(neuralBridgeInstance, bridge);
 
 Built-in skills: `pick_object`, `place_object`, `hand_over`, `follow_me`, `go_to`, `open_door`, `wait`, `wave`.
 
+### Timeouts & needs_help
+
+Skills time out per step (default 8s) and overall (default 60s). On failure the runtime:
+
+1. Marks the skill `needs_help` (or `failed`)
+2. Emits `feedback` with `kind: "needs_help"`
+3. Applies **safe-fail recovery**: `stop` + open gripper
+
+```bash
+npm test                 # includes golden scenario pack
+npm run test:scenarios   # CI scenarios only
+```
+
 ---
 
 ## Project layout

@@ -2,7 +2,7 @@
   "manifest_version": "1.0.0",
   "name": "neurarobobridge",
   "display_name": "NeuraRoboBridge",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "BCI-to-robot middleware: high-level neural intentions → safe robot commands. Simulator arm/humanoid, skill runtime, policy plugins, NeuralBridge adapter. Computer-side / research only — not implant software.",
   "safety_class": "research_only",
   "runtime": "library",

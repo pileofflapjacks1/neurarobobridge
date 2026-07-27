@@ -88,6 +88,7 @@ export type {
   SkillContext,
   SkillDefinition,
   SkillRunStatus,
+  SkillFailureKind,
   ActiveSkill,
   SkillRuntimeHandlers,
   SkillRuntimeOptions,
@@ -108,6 +109,25 @@ export type {
   SafetyPolicy,
   Zone3,
 } from "./policy/index.js";
+
+// Golden scenarios (CI)
+export {
+  GOLDEN_SCENARIOS,
+  getGoldenScenario,
+  listGoldenScenarioIds,
+  hangingSkill,
+  createHangingRobotBackend,
+  runGoldenScenario,
+  runAllGoldenScenarios,
+} from "./scenarios/index.js";
+export type {
+  ScenarioExpectation,
+  ScenarioStepDef,
+  GoldenScenario,
+  ScenarioTraceEvent,
+  ScenarioStepResult,
+  ScenarioRunResult,
+} from "./scenarios/index.js";
 
 // NeuralBridge adapter (zero hard dependency)
 export {

@@ -1,6 +1,6 @@
 /**
  * Executes registered skills as ordered robot command steps.
- * Supports modulate mid-run and cancel / preempt.
+ * Supports modulate, cancel/preempt, step/skill timeouts, safe-fail recovery.
  */
 
 import { createId } from "../core/id.js";
@@ -12,6 +12,7 @@ import type { RobotCapabilities } from "../types/capabilities.js";
 import type {
   ActiveSkill,
   SkillDefinition,
+  SkillFailureKind,
   SkillModulation,
   SkillRuntimeHandlers,
   SkillRuntimeOptions,
@@ -30,22 +31,30 @@ export class SkillRuntime {
   private active: ActiveSkill | null = null;
   private steps: SkillStep[] = [];
   private timers: ReturnType<typeof setTimeout>[] = [];
+  private skillDeadlineTimer: ReturnType<typeof setTimeout> | null = null;
   private cancelled = false;
   private modulation: SkillModulation = { ...DEFAULT_MOD, channels: {} };
   private opts: Required<SkillRuntimeOptions>;
   private handlers: SkillRuntimeHandlers;
   private intentionId = "";
+  private stepGeneration = 0;
 
   constructor(handlers: SkillRuntimeHandlers, opts: SkillRuntimeOptions = {}) {
     this.handlers = handlers;
     this.opts = {
       defaultStepDelayMs: opts.defaultStepDelayMs ?? 120,
+      defaultStepTimeoutMs: opts.defaultStepTimeoutMs ?? 8000,
+      skillTimeoutMs: opts.skillTimeoutMs ?? 60_000,
       preempt: opts.preempt ?? true,
+      safeFailRecovery: opts.safeFailRecovery ?? true,
+      needsHelpOnFailure: opts.needsHelpOnFailure ?? true,
     };
   }
 
   getActive(): ActiveSkill | null {
-    return this.active ? { ...this.active, modulation: { ...this.modulation } } : null;
+    return this.active
+      ? { ...this.active, modulation: { ...this.modulation } }
+      : null;
   }
 
   isRunning(): boolean {
@@ -88,6 +97,7 @@ export class SkillRuntime {
 
     this.clearTimers();
     this.cancelled = false;
+    this.stepGeneration += 1;
     this.intentionId = input.intentionId;
     this.modulation = { ...DEFAULT_MOD, channels: {} };
 
@@ -137,6 +147,19 @@ export class SkillRuntime {
       `Skill ${def.name} started (${steps.length} steps)`,
       this.active
     );
+
+    if (this.opts.skillTimeoutMs > 0) {
+      this.skillDeadlineTimer = setTimeout(() => {
+        if (this.active?.status === "running") {
+          void this.fail(
+            `Skill wall-clock timeout after ${this.opts.skillTimeoutMs}ms`,
+            "timeout",
+            { stepId: this.active.currentStepId }
+          );
+        }
+      }, this.opts.skillTimeoutMs);
+    }
+
     this.scheduleFrom(0);
     return { ok: true, skill: { ...this.active } };
   }
@@ -158,7 +181,7 @@ export class SkillRuntime {
         ...payload.channels,
       };
     }
-    if (this.active) {
+    if (this.active?.status === "running") {
       this.active.modulation = { ...this.modulation };
       this.active.message = `Modulated speed=${this.modulation.speed.toFixed(2)}`;
       this.emitUpdate();
@@ -171,16 +194,18 @@ export class SkillRuntime {
       return;
     }
     this.cancelled = true;
+    this.stepGeneration += 1;
     this.clearTimers();
     this.active = {
       ...this.active,
       status: "cancelled",
       message: reason,
       progress: this.active.progress,
+      failureKind: "cancelled",
+      needsHelp: false,
     };
     this.emitUpdate();
     this.handlers.onFeedback?.("task_cancelled", reason, this.active);
-    // Issue stop
     void this.handlers.execute({
       id: createId("cmd"),
       kind: "stop",
@@ -197,7 +222,7 @@ export class SkillRuntime {
   }
 
   private scheduleFrom(index: number): void {
-    if (this.cancelled || !this.active) return;
+    if (this.cancelled || !this.active || this.active.status !== "running") return;
     if (index >= this.steps.length) {
       this.finishSuccess();
       return;
@@ -206,15 +231,22 @@ export class SkillRuntime {
     const step = this.steps[index]!;
     const delay =
       step.delayMs ?? (index === 0 ? 0 : this.opts.defaultStepDelayMs);
+    const gen = this.stepGeneration;
 
     const timer = setTimeout(() => {
-      void this.runStep(index, step);
+      if (gen !== this.stepGeneration) return;
+      void this.runStep(index, step, gen);
     }, delay);
     this.timers.push(timer);
   }
 
-  private async runStep(index: number, step: SkillStep): Promise<void> {
-    if (this.cancelled || !this.active) return;
+  private async runStep(
+    index: number,
+    step: SkillStep,
+    gen: number
+  ): Promise<void> {
+    if (gen !== this.stepGeneration) return;
+    if (this.cancelled || !this.active || this.active.status !== "running") return;
 
     this.active = {
       ...this.active,
@@ -228,24 +260,66 @@ export class SkillRuntime {
     this.handlers.onFeedback?.(
       "task_progress",
       this.active.message,
-      this.active
+      this.active,
+      { stepId: step.id, stepIndex: index }
     );
 
     const cmd = this.materializeCommand(step);
+    const timeoutMs =
+      step.timeoutMs ?? this.opts.defaultStepTimeoutMs;
+
     try {
-      await this.handlers.execute(cmd);
+      await this.executeWithTimeout(cmd, timeoutMs, step.id, gen);
     } catch (err) {
-      this.fail(err instanceof Error ? err.message : String(err));
+      if (gen !== this.stepGeneration) return;
+      const msg = err instanceof Error ? err.message : String(err);
+      const kind: SkillFailureKind =
+        err instanceof SkillStepTimeoutError || isTimeoutMessage(msg)
+          ? "timeout"
+          : "execute_error";
+      await this.fail(msg, kind, { stepId: step.id, stepIndex: index });
       return;
     }
 
-    if (this.cancelled || !this.active) return;
+    if (gen !== this.stepGeneration) return;
+    if (this.cancelled || !this.active || this.active.status !== "running") return;
     this.scheduleFrom(index + 1);
+  }
+
+  private async executeWithTimeout(
+    cmd: RobotCommand,
+    timeoutMs: number,
+    stepId: string,
+    gen: number
+  ): Promise<void> {
+    if (timeoutMs <= 0) {
+      await this.handlers.execute(cmd);
+      return;
+    }
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        Promise.resolve(this.handlers.execute(cmd)),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            reject(
+              new SkillStepTimeoutError(
+                `Step "${stepId}" timed out after ${timeoutMs}ms`
+              )
+            );
+          }, timeoutMs);
+          this.timers.push(timer);
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+      void gen;
+    }
   }
 
   private materializeCommand(step: SkillStep): RobotCommand {
     const base = { ...step.command };
-    // Apply live speed modulation to motion steps
     if (
       base.speed !== undefined &&
       (base.kind === "move_to" ||
@@ -255,7 +329,9 @@ export class SkillRuntime {
       base.speed = Math.min(1, base.speed * this.modulation.speed);
     } else if (
       base.speed === undefined &&
-      (base.kind === "move_to" || base.kind === "move_delta" || base.kind === "navigate")
+      (base.kind === "move_to" ||
+        base.kind === "move_delta" ||
+        base.kind === "navigate")
     ) {
       base.speed = Math.min(1, 0.5 * this.modulation.speed);
     }
@@ -271,6 +347,7 @@ export class SkillRuntime {
 
   private finishSuccess(): void {
     if (!this.active) return;
+    this.clearTimers();
     this.active = {
       ...this.active,
       status: "succeeded",
@@ -278,6 +355,7 @@ export class SkillRuntime {
       progress: 1,
       message: `Completed ${this.active.skillName}`,
       currentStepId: undefined,
+      needsHelp: false,
     };
     this.emitUpdate();
     this.handlers.onFeedback?.(
@@ -287,16 +365,83 @@ export class SkillRuntime {
     );
   }
 
-  private fail(message: string): void {
+  private async fail(
+    message: string,
+    kind: SkillFailureKind,
+    meta?: Record<string, unknown>
+  ): Promise<void> {
+    this.cancelled = true;
+    this.stepGeneration += 1;
     this.clearTimers();
     if (!this.active) return;
+
+    const needsHelp =
+      this.opts.needsHelpOnFailure &&
+      (kind === "timeout" || kind === "execute_error");
+
+    let recoveryApplied = false;
+    if (this.opts.safeFailRecovery) {
+      recoveryApplied = true;
+      try {
+        await this.handlers.execute({
+          id: createId("cmd"),
+          kind: "stop",
+          timestamp: Date.now(),
+          forced: true,
+          intentionId: this.intentionId,
+          priority: "stop",
+        });
+        await this.handlers.execute({
+          id: createId("cmd"),
+          kind: "set_gripper",
+          gripper: 1,
+          timestamp: Date.now(),
+          forced: true,
+          intentionId: this.intentionId,
+          priority: "stop",
+        });
+      } catch (err) {
+        this.handlers.log?.(
+          "safe-fail recovery error",
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
+
     this.active = {
       ...this.active,
-      status: "failed",
+      status: needsHelp ? "needs_help" : "failed",
       message,
+      failureKind: kind,
+      needsHelp,
+      recoveryApplied,
     };
     this.emitUpdate();
-    this.handlers.onFeedback?.("task_failed", message, this.active);
+
+    if (needsHelp) {
+      this.handlers.onFeedback?.(
+        "needs_help",
+        message,
+        this.active,
+        {
+          failureKind: kind,
+          recoveryApplied,
+          ...meta,
+        }
+      );
+    }
+
+    this.handlers.onFeedback?.(
+      "task_failed",
+      message,
+      this.active,
+      {
+        failureKind: kind,
+        needsHelp,
+        recoveryApplied,
+        ...meta,
+      }
+    );
   }
 
   private emitUpdate(): void {
@@ -310,7 +455,23 @@ export class SkillRuntime {
   private clearTimers(): void {
     for (const t of this.timers) clearTimeout(t);
     this.timers = [];
+    if (this.skillDeadlineTimer) {
+      clearTimeout(this.skillDeadlineTimer);
+      this.skillDeadlineTimer = null;
+    }
   }
+}
+
+class SkillStepTimeoutError extends Error {
+  readonly isSkillTimeout = true;
+  constructor(message: string) {
+    super(message);
+    this.name = "SkillStepTimeoutError";
+  }
+}
+
+function isTimeoutMessage(msg: string): boolean {
+  return /time\s*out|timed\s*out/i.test(msg);
 }
 
 function clamp01(n: number): number {

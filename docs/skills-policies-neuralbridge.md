@@ -54,6 +54,51 @@ Or pass skills in config: `skills: { skills: [mySkill] }`.
 
 Disable with `skills: { enabled: false }` (falls back to raw `execute_task` on the robot backend).
 
+### Timeouts, needs_help, and safe-fail recovery
+
+| Option | Default | Meaning |
+|--------|---------|---------|
+| `defaultStepTimeoutMs` | 8000 | Max time per step `execute()` (0 = off) |
+| `skillTimeoutMs` | 60000 | Wall-clock skill deadline (0 = off) |
+| `safeFailRecovery` | true | On failure: `stop` + open gripper |
+| `needsHelpOnFailure` | true | Status `needs_help` + `feedback.kind === "needs_help"` |
+
+Per-step override: `SkillStep.timeoutMs`.
+
+```ts
+bridge.on("feedback", (f) => {
+  if (f.kind === "needs_help") {
+    console.warn("Operator assist:", f.message, f.meta);
+  }
+});
+
+bridge.on("skill", (s) => {
+  if (s.status === "needs_help") {
+    // s.failureKind === "timeout" | "execute_error" | …
+    // s.recoveryApplied === true if stop+open already sent
+  }
+});
+```
+
+### Golden scenario CI pack
+
+```bash
+npm test                 # full suite including golden scenarios
+npm run test:scenarios   # scenarios only
+```
+
+Built-in pack (`GOLDEN_SCENARIOS`): control-disabled, low confidence, keep-out policy,
+accepted move, e-stop latch, stale TTL, pick skill success, step timeout → needs_help,
+cancel skill, navigate capability mismatch.
+
+```ts
+import { runGoldenScenario, getGoldenScenario } from "neurarobobridge";
+
+const s = getGoldenScenario("estop-latches-and-blocks")!;
+const result = await runGoldenScenario(s);
+console.log(result.ok, result.steps);
+```
+
 ---
 
 ## Policy plugins

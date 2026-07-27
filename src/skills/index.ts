@@ -4,6 +4,7 @@ export type {
   SkillContext,
   SkillDefinition,
   SkillRunStatus,
+  SkillFailureKind,
   ActiveSkill,
   SkillRuntimeHandlers,
   SkillRuntimeOptions,

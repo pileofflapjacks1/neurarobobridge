@@ -188,6 +188,18 @@ npm test                 # includes golden scenario pack
 npm run test:scenarios   # CI scenarios only
 ```
 
+CI: GitHub Actions on `main` / PRs (typecheck · tests · library + demo build).
+
+### Black-box session export
+
+```ts
+const box = bridge.exportBlackBox({ meta: { run: "lab-1" } });
+// box.whyItMoved · box.summary · box.narrative
+const report = bridge.exportBlackBoxReport();
+```
+
+Live demo: **Export black-box JSON / report** after a session.
+
 ---
 
 ## Project layout

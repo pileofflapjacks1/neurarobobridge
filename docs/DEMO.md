@@ -21,6 +21,8 @@ npm run demo:preview    # preview production build
 - Connect → **Enable control** (required) → skills / teleop
 - Simulated **arm** or **humanoid**
 - Skills: pick, place, wave; modulate speed; cancel
+- **Force step timeout** → `needs_help` banner + safe-fail recovery
+- **Export black-box** JSON / text report (why it moved)
 - Keep-out zone (red corner) + low-confidence rejection
 - E-STOP · keyboard WASD / Esc
 - Simulator-only disclaimer banner

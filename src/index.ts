@@ -61,7 +61,12 @@ export type {
   RobotBackendFactory,
 } from "./robot/index.js";
 
-export { SessionRecorder } from "./recording/index.js";
+export {
+  SessionRecorder,
+  buildBlackBox,
+  formatBlackBoxReport,
+} from "./recording/index.js";
+export type { SessionBlackBox, MotionExplanation } from "./recording/index.js";
 
 // Skills (shared autonomy)
 export {

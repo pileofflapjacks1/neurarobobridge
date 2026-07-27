@@ -5,11 +5,28 @@
 
 import {
   NeuraRoboBridge,
+  registerSkill,
   type RobotState,
   type ActiveSkill,
   type ControlMode,
+  type RobotCommand,
+  type SkillDefinition,
 } from "neurarobobridge";
 import "./styles.css";
+
+const hangSkill: SkillDefinition = {
+  name: "demo_hang",
+  description: "Demo skill that hangs until step timeout",
+  build: () => [
+    {
+      id: "hang",
+      label: "Simulated stuck step",
+      timeoutMs: 700,
+      command: { kind: "home" },
+    },
+  ],
+};
+registerSkill(hangSkill);
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -18,6 +35,15 @@ app.innerHTML = `
     <strong>Simulator demo only.</strong>
     Computer-side / research middleware — not implant software, not a medical device,
     not affiliated with Neuralink, Tesla, or Optimus. No real robot hardware is connected.
+  </div>
+
+  <div id="helpBanner" class="help-banner" role="alert">
+    <strong>needs_help</strong> — <span id="helpText">Skill timed out. Recovery: stop + open gripper.</span>
+    <div class="help-actions">
+      <button type="button" id="btnHelpDismiss">Dismiss</button>
+      <button type="button" id="btnHelpHome">Home</button>
+      <button type="button" id="btnHelpExport">Export black-box</button>
+    </div>
   </div>
 
   <header class="top">
@@ -76,8 +102,21 @@ app.innerHTML = `
           <button type="button" id="btnSlower" disabled>Slower</button>
           <button type="button" id="btnFaster" disabled>Faster</button>
         </div>
+        <div class="row">
+          <button type="button" id="btnForceTimeout" class="danger" disabled>Force step timeout</button>
+        </div>
+        <p class="hint">Force timeout demos <code>needs_help</code> + safe-fail recovery (stop + open gripper).</p>
         <div id="skillStatus" class="status-block">No active skill</div>
         <div class="progress" aria-hidden="true"><i id="skillBar"></i></div>
+      </div>
+
+      <div class="section-gap">
+        <h2>Audit</h2>
+        <div class="row">
+          <button type="button" id="btnExportJson" disabled>Export black-box JSON</button>
+          <button type="button" id="btnExportText" disabled>Export report (.txt)</button>
+        </div>
+        <p class="hint">Downloads a session black-box: commands, safety, and “why it moved”.</p>
       </div>
 
       <div class="section-gap">
@@ -151,6 +190,14 @@ const btnSlower = $("#btnSlower") as HTMLButtonElement;
 const btnFaster = $("#btnFaster") as HTMLButtonElement;
 const btnLowConf = $("#btnLowConf") as HTMLButtonElement;
 const btnKeepOut = $("#btnKeepOut") as HTMLButtonElement;
+const btnForceTimeout = $("#btnForceTimeout") as HTMLButtonElement;
+const btnExportJson = $("#btnExportJson") as HTMLButtonElement;
+const btnExportText = $("#btnExportText") as HTMLButtonElement;
+const helpBanner = $("#helpBanner");
+const helpText = $("#helpText");
+const btnHelpDismiss = $("#btnHelpDismiss") as HTMLButtonElement;
+const btnHelpHome = $("#btnHelpHome") as HTMLButtonElement;
+const btnHelpExport = $("#btnHelpExport") as HTMLButtonElement;
 
 function $<T extends HTMLElement = HTMLElement>(sel: string): T {
   return app.querySelector(sel) as T;
@@ -161,12 +208,14 @@ let robotBackend: "simulated-arm" | "simulated-humanoid" = "simulated-arm";
 let bridge = createBridge();
 let lastState: RobotState | null = null;
 let modSpeed = 0.55;
+let hangPatch: ((cmd: RobotCommand) => Promise<void> | void) | null = null;
 
 function createBridge(): NeuraRoboBridge {
   return new NeuraRoboBridge({
     bciBackend: "manual",
     robotBackend,
     logLevel: "warn",
+    recording: true,
     safety: {
       minConfidence: 0.75,
       maxIntentionsPerSecond: 20,
@@ -179,7 +228,14 @@ function createBridge(): NeuraRoboBridge {
       maxIntentionAgeMs: 2000,
       maxTaskAgeMs: 5000,
     },
-    skills: { enabled: true, defaultStepDelayMs: 180 },
+    skills: {
+      enabled: true,
+      defaultStepDelayMs: 180,
+      defaultStepTimeoutMs: 8000,
+      skillTimeoutMs: 60_000,
+      safeFailRecovery: true,
+      needsHelpOnFailure: true,
+    },
     policies: {
       keepOutZones: [
         {
@@ -194,6 +250,49 @@ function createBridge(): NeuraRoboBridge {
     simulatedArm: { tickHz: 30 },
     simulatedHumanoid: { tickHz: 24 },
   });
+}
+
+function showNeedsHelp(message: string): void {
+  helpText.textContent = message;
+  helpBanner.classList.add("visible");
+}
+
+function hideNeedsHelp(): void {
+  helpBanner.classList.remove("visible");
+}
+
+function downloadBlob(filename: string, content: string, mime: string): void {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportJson(): void {
+  const box = bridge.exportBlackBox({
+    meta: { source: "demo", robotBackend },
+  });
+  downloadBlob(
+    `neurarobobridge-blackbox-${box.session.id}.json`,
+    JSON.stringify(box, null, 2),
+    "application/json"
+  );
+  log(`Exported black-box JSON (${box.summary.commandCount} cmds)`, "tag-ok");
+}
+
+function exportText(): void {
+  const report = bridge.exportBlackBoxReport({
+    meta: { source: "demo", robotBackend },
+  });
+  downloadBlob(
+    `neurarobobridge-report-${Date.now()}.txt`,
+    report,
+    "text/plain"
+  );
+  log("Exported black-box text report", "tag-ok");
 }
 
 function wireBridge(b: NeuraRoboBridge): void {
@@ -216,10 +315,21 @@ function wireBridge(b: NeuraRoboBridge): void {
   );
   b.on("skill", (s) => {
     updateSkillUi(s);
-    if (s.status === "running" || s.status === "succeeded" || s.status === "failed") {
+    if (
+      s.status === "running" ||
+      s.status === "succeeded" ||
+      s.status === "failed" ||
+      s.status === "needs_help" ||
+      s.status === "cancelled"
+    ) {
       log(
         `skill ${s.skillName} [${s.status}] ${s.message}`,
-        s.status === "failed" ? "tag-err" : "tag-skill"
+        s.status === "failed" || s.status === "needs_help" ? "tag-err" : "tag-skill"
+      );
+    }
+    if (s.status === "needs_help") {
+      showNeedsHelp(
+        `${s.message}${s.recoveryApplied ? " · recovery applied (stop + open gripper)" : ""}`
       );
     }
   });
@@ -228,6 +338,11 @@ function wireBridge(b: NeuraRoboBridge): void {
     draw(s);
   });
   b.on("feedback", (f) => {
+    if (f.kind === "needs_help") {
+      showNeedsHelp(f.message);
+      log(`needs_help: ${f.message}`, "tag-err");
+      return;
+    }
     if (f.kind !== "task_progress") log(`feedback ${f.kind}: ${f.message}`, "tag-skill");
   });
   b.on("error", (e) => log(`error ${e.context}: ${e.error.message}`, "tag-err"));
@@ -250,7 +365,11 @@ function updateSkillUi(s: ActiveSkill | null): void {
     skillBar.style.width = "0%";
     return;
   }
-  skillStatus.textContent = `${s.skillName} · ${s.status} · step ${Math.min(s.stepIndex + 1, s.stepCount)}/${s.stepCount}\n${s.message}`;
+  const help =
+    s.needsHelp || s.status === "needs_help"
+      ? ` · needs_help (${s.failureKind ?? "?"})`
+      : "";
+  skillStatus.textContent = `${s.skillName} · ${s.status}${help} · step ${Math.min(s.stepIndex + 1, s.stepCount)}/${s.stepCount}\n${s.message}`;
   skillBar.style.width = `${Math.round(s.progress * 100)}%`;
 }
 
@@ -272,6 +391,9 @@ function refreshUi(): void {
   btnFaster.disabled = !connected;
   btnLowConf.disabled = !connected;
   btnKeepOut.disabled = !connected;
+  btnForceTimeout.disabled = !connected || !enabled;
+  btnExportJson.disabled = !connected;
+  btnExportText.disabled = !connected;
 
   app.querySelectorAll<HTMLButtonElement>(".intent, .skill, [data-mode]").forEach((el) => {
     el.disabled = !connected;
@@ -568,6 +690,47 @@ btnKeepOut.onclick = () => {
     confidence: 0.95,
     payload: { target: { x: 0.7, y: 0.7, z: 0.4 } },
   });
+};
+
+btnForceTimeout.onclick = () => {
+  hideNeedsHelp();
+  const robot = bridge.getRobotBackend();
+  const original = robot.execute.bind(robot);
+  hangPatch = async (cmd: RobotCommand) => {
+    if (cmd.forced || cmd.kind === "stop" || cmd.kind === "estop" || cmd.kind === "set_gripper") {
+      return original(cmd);
+    }
+    // Never resolve — skill step timeout wins
+    await new Promise<void>(() => {
+      /* hang */
+    });
+  };
+  robot.execute = hangPatch;
+
+  log("Forcing hanging skill step (timeout ~700ms)…", "tag-warn");
+  bridge.injectIntention({
+    kind: "task",
+    confidence: 0.95,
+    payload: { task: "demo_hang", requireConfirm: false },
+  });
+
+  // Restore execute after timeout window
+  window.setTimeout(() => {
+    if (robot.execute === hangPatch) {
+      robot.execute = original;
+      hangPatch = null;
+      log("Restored robot.execute after hang demo", "tag-skill");
+    }
+  }, 2500);
+};
+
+btnExportJson.onclick = () => exportJson();
+btnExportText.onclick = () => exportText();
+btnHelpExport.onclick = () => exportJson();
+btnHelpDismiss.onclick = () => hideNeedsHelp();
+btnHelpHome.onclick = () => {
+  hideNeedsHelp();
+  bridge.injectIntention({ kind: "home", confidence: 0.95 });
 };
 
 window.addEventListener("keydown", (ev) => {

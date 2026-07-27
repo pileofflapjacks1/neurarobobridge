@@ -25,6 +25,11 @@ import {
   type RobotBackend,
 } from "../robot/index.js";
 import { SessionRecorder } from "../recording/SessionRecorder.js";
+import {
+  buildBlackBox,
+  formatBlackBoxReport,
+  type SessionBlackBox,
+} from "../recording/blackBox.js";
 import { SimulatorBciBackend } from "../bci/SimulatorBciBackend.js";
 import { PlaybackBciBackend } from "../bci/PlaybackBciBackend.js";
 import { resolveScenario } from "../bci/scenarios.js";
@@ -443,6 +448,37 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
 
   getRecording(): SessionRecording | null {
     return this.recorder?.toJSON() ?? null;
+  }
+
+  /**
+   * Export audit black-box: full session + “why it moved” narrative.
+   * Uses the current in-memory recording (starts one if missing and empty).
+   */
+  exportBlackBox(opts?: {
+    /** Stop recording after export. Default false. */
+    stop?: boolean;
+    meta?: Record<string, unknown>;
+  }): SessionBlackBox {
+    if (!this.recorder) {
+      this.recorder = new SessionRecorder(true);
+      this.recorder.start({
+        bciBackend: this.bci.id,
+        robotBackend: this.robot.id,
+        ...opts?.meta,
+      });
+    }
+    const session = opts?.stop
+      ? this.recorder.stop()
+      : this.recorder.toJSON();
+    if (opts?.meta) {
+      session.meta = { ...(session.meta ?? {}), ...opts.meta };
+    }
+    return buildBlackBox(session);
+  }
+
+  /** Text report suitable for download / clipboard. */
+  exportBlackBoxReport(opts?: { stop?: boolean; meta?: Record<string, unknown> }): string {
+    return formatBlackBoxReport(this.exportBlackBox(opts));
   }
 
   getBciBackend(): BciBackend {

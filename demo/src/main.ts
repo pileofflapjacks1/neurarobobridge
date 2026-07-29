@@ -12,6 +12,7 @@ import {
   type RobotCommand,
   type SkillDefinition,
 } from "neurarobobridge";
+import { drawViz, type VizMode } from "./viz";
 import "./styles.css";
 
 const hangSkill: SkillDefinition = {
@@ -156,6 +157,13 @@ app.innerHTML = `
 
     <section class="panel">
       <h2>Visualization</h2>
+      <div class="row" style="margin-bottom:0.65rem">
+        <button type="button" id="btnVizHumanoid" class="active">Humanoid 2.5D</button>
+        <button type="button" id="btnVizSchema">Schema (top-down)</button>
+      </div>
+      <p class="hint" style="margin-top:0;margin-bottom:0.55rem">
+        Generic humanoid schematic for the sim — not affiliated with Optimus or any commercial robot.
+      </p>
       <canvas id="viz" width="900" height="420"></canvas>
       <div class="section-gap">
         <h2>Event log</h2>
@@ -200,6 +208,8 @@ const helpText = $("#helpText");
 const btnHelpDismiss = $("#btnHelpDismiss") as HTMLButtonElement;
 const btnHelpHome = $("#btnHelpHome") as HTMLButtonElement;
 const btnHelpExport = $("#btnHelpExport") as HTMLButtonElement;
+const btnVizHumanoid = $("#btnVizHumanoid") as HTMLButtonElement;
+const btnVizSchema = $("#btnVizSchema") as HTMLButtonElement;
 
 function $<T extends HTMLElement = HTMLElement>(sel: string): T {
   return app.querySelector(sel) as T;
@@ -211,6 +221,8 @@ let bridge = createBridge();
 let lastState: RobotState | null = null;
 let modSpeed = 0.55;
 let hangPatch: ((cmd: RobotCommand) => Promise<void> | void) | null = null;
+let vizMode: VizMode = "humanoid";
+let rafId = 0;
 
 function createBridge(): NeuraRoboBridge {
   return new NeuraRoboBridge({
@@ -337,7 +349,7 @@ function wireBridge(b: NeuraRoboBridge): void {
   });
   b.on("robotState", (s) => {
     lastState = s;
-    draw(s);
+    // rAF loop also paints for idle bob; keep lastState fresh
   });
   b.on("feedback", (f) => {
     if (f.kind === "needs_help") {
@@ -431,98 +443,36 @@ function refreshUi(): void {
 }
 
 // ─── Canvas ────────────────────────────────────────────────
-function draw(state: RobotState): void {
-  const w = canvas.width;
-  const h = canvas.height;
-  ctx.fillStyle = "#0a1018";
-  ctx.fillRect(0, 0, w, h);
-
-  ctx.strokeStyle = "#1c2a3a";
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 12; i++) {
-    const x = (i / 11) * w;
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-    ctx.stroke();
-    const y = (i / 11) * h;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-    ctx.stroke();
-  }
-
-  // keep-out zone visual (top-down x/y)
-  const zx0 = w / 2 + 0.55 * 280;
-  const zy0 = h / 2 - 0.55 * 280;
-  const zx1 = w / 2 + 1.2 * 280;
-  const zy1 = h / 2 - 1.2 * 280;
-  ctx.fillStyle = "rgba(255, 93, 108, 0.08)";
-  ctx.strokeStyle = "rgba(255, 93, 108, 0.35)";
-  ctx.fillRect(zx0, zy1, zx1 - zx0, zy0 - zy1);
-  ctx.strokeRect(zx0, zy1, zx1 - zx0, zy0 - zy1);
-  ctx.fillStyle = "#ff5d6c88";
-  ctx.font = "11px IBM Plex Mono, monospace";
-  ctx.fillText("keep-out", zx0 + 6, zy0 - 8);
-
-  const p = state.pose?.position ?? { x: 0, y: 0, z: 0.3 };
-  const base = state.basePose?.position;
-  const sx = w / 2 + p.x * 280;
-  const sy = h / 2 - p.y * 280;
-  const r = 10 + p.z * 16;
-
-  if (base) {
-    const bx = w / 2 + base.x * 120;
-    const by = h / 2 - base.y * 120;
-    ctx.fillStyle = "#2a3a4f";
-    ctx.beginPath();
-    ctx.arc(bx, by, 16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#3dd6c688";
-    ctx.beginPath();
-    ctx.moveTo(bx, by);
-    ctx.lineTo(sx, sy);
-    ctx.stroke();
-  } else {
-    ctx.fillStyle = "#243041";
-    ctx.beginPath();
-    ctx.arc(w / 2, h / 2, 12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#3dd6c6";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(w / 2, h / 2);
-    ctx.lineTo(sx, sy);
-    ctx.stroke();
-  }
-
-  const grip = state.grippers?.[0]?.open ?? 1;
-  ctx.fillStyle = grip < 0.3 ? "#f0b429" : "#5ddea0";
-  ctx.beginPath();
-  ctx.arc(sx, sy, r, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = "#8aa0b8";
-  ctx.font = "12px IBM Plex Mono, monospace";
-  ctx.fillText(
-    `mode=${state.mode}  ee=(${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})  grip=${grip.toFixed(2)}`,
-    14,
-    h - 16
-  );
-
-  if (state.mode === "estop") {
-    ctx.fillStyle = "#ff5d6c";
-    ctx.font = "bold 28px IBM Plex Sans, sans-serif";
-    ctx.fillText("E-STOP", w / 2 - 52, 42);
-  }
+function paint(): void {
+  const state: RobotState = lastState ?? {
+    mode: "disconnected",
+    pose: { position: { x: 0.3, y: 0.1, z: 0.95 } },
+    basePose: { position: { x: 0, y: 0, z: 0 } },
+    grippers: [{ name: "g", open: 1 }],
+    timestamp: Date.now(),
+  };
+  drawViz(ctx, canvas, state, vizMode);
 }
 
-draw({
-  mode: "disconnected",
-  pose: { position: { x: 0.35, y: 0, z: 0.35 } },
-  grippers: [{ name: "g", open: 1 }],
-  timestamp: Date.now(),
-});
+function startPaintLoop(): void {
+  cancelAnimationFrame(rafId);
+  const tick = () => {
+    paint();
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function setVizMode(mode: VizMode): void {
+  vizMode = mode;
+  btnVizHumanoid.classList.toggle("active", mode === "humanoid");
+  btnVizSchema.classList.toggle("active", mode === "schema");
+}
+
+btnVizHumanoid.onclick = () => setVizMode("humanoid");
+btnVizSchema.onclick = () => setVizMode("schema");
+
+startPaintLoop();
 
 // ─── Actions ───────────────────────────────────────────────
 async function reconnect(next: "simulated-arm" | "simulated-humanoid"): Promise<void> {
@@ -539,12 +489,7 @@ async function reconnect(next: "simulated-arm" | "simulated-humanoid"): Promise<
   updateSkillUi(null);
   log(`robot backend → ${robotBackend}`, "tag-skill");
   refreshUi();
-  draw({
-    mode: "disconnected",
-    pose: { position: { x: 0.35, y: 0, z: 0.35 } },
-    grippers: [{ name: "g", open: 1 }],
-    timestamp: Date.now(),
-  });
+  paint();
 }
 
 btnConnect.onclick = async () => {

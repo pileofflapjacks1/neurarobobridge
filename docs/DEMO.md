@@ -20,6 +20,7 @@ npm run demo:preview    # preview production build
 
 - Connect → **Enable control** (required) → skills / teleop
 - Simulated **arm** or **humanoid**
+- **Viz toggle:** Humanoid 2.5D figure (default) or top-down schema
 - Skills: pick, place, wave; modulate speed; cancel
 - **Force step timeout** → `needs_help` banner + safe-fail recovery
 - **Export black-box** JSON / text report (why it moved)

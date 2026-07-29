@@ -27,17 +27,17 @@ Applications and robot stacks should **never** talk directly to raw BCI hardware
 | Piece | Role |
 |-------|------|
 | **[NeuraBeach](https://neurabeach.vercel.app)** | Discover / catalog |
-| **[NeuralBridge](https://github.com/pileofflapjacks1/neuralbridge)** | BCI → app/UI intents (middleware) |
+| **[Neurabridge](https://github.com/pileofflapjacks1/neurabridge)** | BCI → app/UI intents (middleware) |
 | **NeuraRoboBridge** (this repo) | High-level intents → **safe robot** commands (middleware, robot path) |
 | **[NeuraBinder](https://github.com/pileofflapjacks1/neurabinder)** | Reference app demo (UI) |
 | **Intent → OS** | OS pointer adapter (parallel path) |
 
 ```
-NeuralBridge (optional)  ──adapter──▶  NeuraRoboBridge  ──▶  simulated arm / humanoid
+Neurabridge (optional)  ──adapter──▶  NeuraRoboBridge  ──▶  simulated arm / humanoid
         UI / app intents              safety · skills · policies
 ```
 
-NeuralBridge focuses on delivering neural intent to **applications**.  
+Neurabridge focuses on delivering neural intent to **applications**.  
 NeuraRoboBridge focuses on turning intent into **physical (or simulated) robot action** with safety designed in.
 
 Catalog: [NeuraBeach · col-neura-suite](https://neurabeach.vercel.app/collections/col-neura-suite) · Upload notes: [`LISTING.md`](./LISTING.md) · Demo guide: [`docs/DEMO.md`](./docs/DEMO.md) · **[FAQ](#faq--can-i-connect-my-neuralink)**
@@ -116,7 +116,7 @@ Until that public computer-side interface exists, **step 1 is not available to o
 | Project | Job |
 |---------|-----|
 | **NeuraBeach** | Catalog / discover computer-side BCI tools |
-| **NeuralBridge** | BCI-style intents → **apps / UI** |
+| **Neurabridge** | BCI-style intents → **apps / UI** |
 | **NeuraRoboBridge** | Intents → **safe robot** commands |
 | **NeuraBinder / NeuraShell** | Example **products** using the computer-side path |
 
@@ -197,7 +197,7 @@ await bridge.enableControl(); // explicit enable — required for motion
 npm run example:basic       # pick-place scenario → simulated arm
 npm run example:safety      # confidence, workspace, rate limit, e-stop
 npm run example:humanoid    # modes, confirm-to-execute, tasks
-npm run example:skills      # skill runtime + policy plugins + NeuralBridge map
+npm run example:skills      # skill runtime + policy plugins + Neurabridge map
 ```
 
 **Live demo (Vercel):** [neurarobobridge.vercel.app](https://neurarobobridge.vercel.app) · also `/demo`
@@ -216,11 +216,11 @@ npm run build:demo     # static build → demo/dist (Vercel output)
 │   BCI Input Side    │     │  Safety & Translation    │     │  Robot Output Side  │
 │  Simulator / Manual │────▶│  modes · watchdog · TTL  │────▶│  Simulated arm      │
 │  Playback           │     │  policies · skills       │     │  Simulated humanoid │
-│  NeuralBridge adapt.│     │  confirm · e-stop        │     │  Null / future ROS  │
+│  Neurabridge adapt.│     │  confirm · e-stop        │     │  Null / future ROS  │
 └─────────────────────┘     └──────────────────────────┘     └─────────────────────┘
 ```
 
-Docs: [`docs/architecture.md`](./docs/architecture.md) · [`docs/adding-backends.md`](./docs/adding-backends.md) · [`docs/skills-policies-neuralbridge.md`](./docs/skills-policies-neuralbridge.md)
+Docs: [`docs/architecture.md`](./docs/architecture.md) · [`docs/adding-backends.md`](./docs/adding-backends.md) · [`docs/skills-policies-neurabridge.md`](./docs/skills-policies-neurabridge.md)
 
 ---
 
@@ -239,7 +239,7 @@ Docs: [`docs/architecture.md`](./docs/architecture.md) · [`docs/adding-backends
 
 ---
 
-## Skills, policies, NeuralBridge
+## Skills, policies, Neurabridge
 
 ```ts
 // Shared-autonomy skill
@@ -257,9 +257,9 @@ new NeuraRoboBridge({
   },
 });
 
-// Optional NeuralBridge glue (zero hard dependency)
-import { attachNeuralBridge } from "neurarobobridge";
-attachNeuralBridge(neuralBridgeInstance, bridge);
+// Optional Neurabridge glue (zero hard dependency)
+import { attachNeurabridge } from "neurarobobridge";
+attachNeurabridge(neuralBridgeInstance, bridge);
 ```
 
 Built-in skills: `pick_object`, `place_object`, `hand_over`, `follow_me`, `go_to`, `open_door`, `wait`, `wave`.

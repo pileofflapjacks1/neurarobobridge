@@ -134,20 +134,20 @@ export type {
   ScenarioRunResult,
 } from "./scenarios/index.js";
 
-// NeuralBridge adapter (zero hard dependency)
+// Neurabridge adapter (zero hard dependency)
 export {
-  mapNeuralBridgeIntention,
-  mapNeuralBridgeGesture,
-  NeuralBridgeAdapter,
-  attachNeuralBridge,
+  mapNeurabridgeIntention,
+  mapNeurabridgeGesture,
+  NeurabridgeAdapter,
+  attachNeurabridge,
 } from "./adapters/index.js";
 export type {
-  NeuralBridgeIntentionLike,
-  NeuralBridgeGestureLike,
+  NeurabridgeIntentionLike,
+  NeurabridgeGestureLike,
   IntentionMapFn,
   GestureMapFn,
-  NeuralBridgeLike,
-  NeuralBridgeAdapterOptions,
+  NeurabridgeLike,
+  NeurabridgeAdapterOptions,
 } from "./adapters/index.js";
 
 export {

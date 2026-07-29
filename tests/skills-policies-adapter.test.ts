@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   NeuraRoboBridge,
-  mapNeuralBridgeIntention,
-  mapNeuralBridgeGesture,
-  NeuralBridgeAdapter,
+  mapNeurabridgeIntention,
+  mapNeurabridgeGesture,
+  NeurabridgeAdapter,
   createKeepOutZonesPolicy,
   createNoLocomotionWhileGraspingPolicy,
   registerSkill,
@@ -11,7 +11,7 @@ import {
   type SkillDefinition,
   type ActiveSkill,
   type RobotCommand,
-  type NeuralBridgeIntentionLike,
+  type NeurabridgeIntentionLike,
 } from "../src/index.js";
 
 describe("Skill runtime", () => {
@@ -238,28 +238,28 @@ describe("Policy plugins", () => {
   });
 });
 
-describe("NeuralBridge adapter", () => {
+describe("Neurabridge adapter", () => {
   it("maps confirm/cancel/task payloads", () => {
-    expect(mapNeuralBridgeIntention({
+    expect(mapNeurabridgeIntention({
       type: "confirm",
       confidence: 0.9,
       timestamp: 1,
     })?.kind).toBe("confirm");
 
-    expect(mapNeuralBridgeIntention({
+    expect(mapNeurabridgeIntention({
       type: "cancel",
       confidence: 0.9,
       timestamp: 1,
     })?.kind).toBe("cancel");
 
-    const task = mapNeuralBridgeIntention({
+    const task = mapNeurabridgeIntention({
       type: "custom",
       confidence: 0.9,
       timestamp: 1,
       payload: { task: "wave", requireConfirm: false },
     });
     // custom without robotKind - check task path via type with payload.task
-    const task2 = mapNeuralBridgeIntention({
+    const task2 = mapNeurabridgeIntention({
       type: "select",
       confidence: 0.9,
       timestamp: 1,
@@ -268,7 +268,7 @@ describe("NeuralBridge adapter", () => {
     // select maps to confirm by default unless task in payload - actually select maps to confirm first in switch. Fix: payload.task is checked before switch.
     expect(task2?.kind).toBe("task");
 
-    const robotKind = mapNeuralBridgeIntention({
+    const robotKind = mapNeurabridgeIntention({
       type: "custom",
       confidence: 0.9,
       timestamp: 1,
@@ -278,7 +278,7 @@ describe("NeuralBridge adapter", () => {
   });
 
   it("maps gestures to relative move", () => {
-    const m = mapNeuralBridgeGesture({
+    const m = mapNeurabridgeGesture({
       type: "move",
       confidence: 0.9,
       timestamp: 1,
@@ -287,7 +287,7 @@ describe("NeuralBridge adapter", () => {
     expect(m?.kind).toBe("move");
   });
 
-  it("forwards NeuralBridge-like events into NeuraRoboBridge", async () => {
+  it("forwards Neurabridge-like events into NeuraRoboBridge", async () => {
     const listeners = new Map<string, Set<(...args: unknown[]) => void>>();
     const neural = {
       on(event: string, handler: (...args: never[]) => void) {
@@ -317,13 +317,13 @@ describe("NeuralBridge adapter", () => {
     await bridge.connect();
     await bridge.enableControl();
 
-    const adapter = new NeuralBridgeAdapter();
+    const adapter = new NeurabridgeAdapter();
     const detach = adapter.attach(neural, bridge);
 
     const skills: ActiveSkill[] = [];
     bridge.on("skill", (s) => skills.push({ ...s }));
 
-    const evt: NeuralBridgeIntentionLike = {
+    const evt: NeurabridgeIntentionLike = {
       type: "next",
       confidence: 0.95,
       timestamp: Date.now(),

@@ -174,7 +174,7 @@ app.innerHTML = `
 
   <footer class="foot">
     Part of <a href="https://neurabeach.vercel.app/collections/col-neura-suite" target="_blank" rel="noreferrer">Joe’s Neura Suite</a>
-    · Companion to NeuralBridge (app intents) · MIT ·
+    · Companion to Neurabridge (app intents) · MIT ·
     <a href="https://github.com/pileofflapjacks1/neurarobobridge" target="_blank" rel="noreferrer">Source</a>
   </footer>
 `;

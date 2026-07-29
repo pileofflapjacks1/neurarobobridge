@@ -6,8 +6,8 @@
 
 import {
   NeuraRoboBridge,
-  mapNeuralBridgeIntention,
-  type NeuralBridgeIntentionLike,
+  mapNeurabridgeIntention,
+  type NeurabridgeIntentionLike,
 } from "../../src/index.js";
 
 async function main() {
@@ -88,14 +88,14 @@ async function main() {
 
   await sleep(1500);
 
-  console.log("\n3) Simulated NeuralBridge intention → adapter map → inject:");
-  const nbEvent: NeuralBridgeIntentionLike = {
+  console.log("\n3) Simulated Neurabridge intention → adapter map → inject:");
+  const nbEvent: NeurabridgeIntentionLike = {
     type: "custom",
     confidence: 0.92,
     timestamp: Date.now(),
     payload: { robotKind: "home" },
   };
-  const mapped = mapNeuralBridgeIntention(nbEvent);
+  const mapped = mapNeurabridgeIntention(nbEvent);
   console.log("   mapped:", mapped?.kind);
   if (mapped) bridge.injectIntention(mapped);
 

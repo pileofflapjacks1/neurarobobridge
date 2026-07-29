@@ -1,1 +1,1 @@
-export * from "./neuralbridge/index.js";
+export * from "./neurabridge/index.js";

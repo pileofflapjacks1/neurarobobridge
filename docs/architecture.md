@@ -172,15 +172,15 @@ Good enough for application development and safety testing; not a substitute for
 `SessionRecorder` stores timeline events (`intention`, `command`, `robotState`, `safetyEvent`, `marker`) with offsets from session start.  
 `PlaybackBciBackend` can replay intention streams for regression tests and demos.
 
-## Relationship to NeuralBridge
+## Relationship to Neurabridge
 
-| | NeuralBridge | NeuraRoboBridge |
+| | Neurabridge | NeuraRoboBridge |
 |--|--------------|-------------|
 | Focus | BCI → application intents / UI actions | BCI intentions → **robot** commands |
 | Safety | Policies / cooldowns for app actions | Physical safety (e-stop, workspace, joints) |
 | Output | App events / vocabulary | `RobotCommand` + robot state |
 
-A production stack may use NeuralBridge (or similar) for decoding/classification, then feed high-level intents into NeuraRoboBridge for robot execution. NeuraRoboBridge can also stand alone with its own simulator.
+A production stack may use Neurabridge (or similar) for decoding/classification, then feed high-level intents into NeuraRoboBridge for robot execution. NeuraRoboBridge can also stand alone with its own simulator.
 
 ## Testing strategy
 

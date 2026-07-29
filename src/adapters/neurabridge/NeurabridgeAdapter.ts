@@ -1,31 +1,31 @@
 /**
- * Attach a NeuralBridge-like emitter to NeuraRoboBridge.
+ * Attach a Neurabridge-like emitter to NeuraRoboBridge.
  * Zero hard dependency — works with any object that emits intention events.
  */
 
 import type { NeuraRoboBridge } from "../../core/NeuraRoboBridge.js";
 import {
-  mapNeuralBridgeIntention,
-  mapNeuralBridgeGesture,
-  type NeuralBridgeIntentionLike,
-  type NeuralBridgeGestureLike,
+  mapNeurabridgeIntention,
+  mapNeurabridgeGesture,
+  type NeurabridgeIntentionLike,
+  type NeurabridgeGestureLike,
   type IntentionMapFn,
   type GestureMapFn,
 } from "./mapIntention.js";
 
-/** Duck-typed NeuralBridge client surface. */
-export interface NeuralBridgeLike {
+/** Duck-typed Neurabridge client surface. */
+export interface NeurabridgeLike {
   on(event: string, handler: (...args: never[]) => void): unknown;
   off?(event: string, handler: (...args: never[]) => void): unknown;
   /** Some versions return unsubscribe from on(). */
 }
 
-export interface NeuralBridgeAdapterOptions {
+export interface NeurabridgeAdapterOptions {
   /** Custom intention mapper. Return null to drop. */
   mapIntention?: IntentionMapFn;
   /** Custom gesture mapper. */
   mapGesture?: GestureMapFn;
-  /** Forward NeuralBridge gestures (default true). */
+  /** Forward Neurabridge gestures (default true). */
   forwardGestures?: boolean;
   /** Only forward when robo bridge control is enabled (default false — still useful for confirm while enabled). */
   requireControlEnabled?: boolean;
@@ -35,26 +35,26 @@ export interface NeuralBridgeAdapterOptions {
 }
 
 /**
- * Bidirectional-ish glue: NeuralBridge events → NeuraRoboBridge.injectIntention.
+ * Bidirectional-ish glue: Neurabridge events → NeuraRoboBridge.injectIntention.
  */
-export class NeuralBridgeAdapter {
+export class NeurabridgeAdapter {
   private unsubs: Array<() => void> = [];
   private attached = false;
 
-  constructor(private options: NeuralBridgeAdapterOptions = {}) {}
+  constructor(private options: NeurabridgeAdapterOptions = {}) {}
 
   /**
    * Wire neural → robo. Returns detach function.
    */
-  attach(neural: NeuralBridgeLike, robo: NeuraRoboBridge): () => void {
+  attach(neural: NeurabridgeLike, robo: NeuraRoboBridge): () => void {
     this.detach();
     this.attached = true;
 
-    const mapI = this.options.mapIntention ?? mapNeuralBridgeIntention;
-    const mapG = this.options.mapGesture ?? mapNeuralBridgeGesture;
+    const mapI = this.options.mapIntention ?? mapNeurabridgeIntention;
+    const mapG = this.options.mapGesture ?? mapNeurabridgeGesture;
     const forwardGestures = this.options.forwardGestures !== false;
 
-    const onIntention = ((event: NeuralBridgeIntentionLike) => {
+    const onIntention = ((event: NeurabridgeIntentionLike) => {
       if (
         this.options.requireControlEnabled &&
         !robo.isControlEnabled() &&
@@ -76,7 +76,7 @@ export class NeuralBridgeAdapter {
       robo.injectIntention(mapped);
     }) as (...args: never[]) => void;
 
-    const onGesture = ((event: NeuralBridgeGestureLike) => {
+    const onGesture = ((event: NeurabridgeGestureLike) => {
       if (!forwardGestures) return;
       if (this.options.requireControlEnabled && !robo.isControlEnabled()) {
         this.options.onDrop?.("control_disabled", event);
@@ -125,11 +125,11 @@ export class NeuralBridgeAdapter {
 /**
  * Convenience: attach once and return detach.
  */
-export function attachNeuralBridge(
-  neural: NeuralBridgeLike,
+export function attachNeurabridge(
+  neural: NeurabridgeLike,
   robo: NeuraRoboBridge,
-  options?: NeuralBridgeAdapterOptions
+  options?: NeurabridgeAdapterOptions
 ): () => void {
-  const adapter = new NeuralBridgeAdapter(options);
+  const adapter = new NeurabridgeAdapter(options);
   return adapter.attach(neural, robo);
 }

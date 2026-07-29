@@ -18,22 +18,22 @@ Use this when uploading or seeding **NeuraRoboBridge** on [NeuraBeach](https://n
 
 ## Short description (≤280)
 
-BCI-to-robot middleware for TypeScript: neural intentions → safe robot commands. Simulator arm/humanoid, skill runtime, policy plugins, optional NeuralBridge adapter. Computer-side / research only — not implant software.
+BCI-to-robot middleware for TypeScript: neural intentions → safe robot commands. Simulator arm/humanoid, skill runtime, policy plugins, optional Neurabridge adapter. Computer-side / research only — not implant software.
 
 ## Suite role
 
-**Middleware (robot path).** Companion to NeuralBridge:
+**Middleware (robot path).** Companion to Neurabridge:
 
 ```
 NeuraBeach (discover)
-    → apps (e.g. NeuraBinder) use NeuralBridge for UI intents
+    → apps (e.g. NeuraBinder) use Neurabridge for UI intents
     → NeuraRoboBridge turns high-level intents into safe robot actions
     → simulated arm / humanoid today; real backends later
 ```
 
 | Piece | Relationship |
 |-------|----------------|
-| **NeuralBridge** | Optional upstream for app-level BCI intents (`attachNeuralBridge`) |
+| **Neurabridge** | Optional upstream for app-level BCI intents (`attachNeurabridge`) |
 | **NeuraBinder** | Product demo for UI intents — not a robot controller |
 | **Intent → OS** | OS pointer adapter — parallel path, not a dependency |
 | **NeuraRoboBridge** | Robot safety + skills + simulators |
@@ -63,4 +63,4 @@ Browser canvas demo (after build): serve repo root and open `examples/browser/in
 
 ## Tags
 
-`typescript` · `bci` · `middleware` · `robotics` · `simulator` · `safety` · `humanoid` · `neura-suite` · `neuralbridge` · `library` · `research_utility`
+`typescript` · `bci` · `middleware` · `robotics` · `simulator` · `safety` · `humanoid` · `neura-suite` · `neurabridge` · `library` · `research_utility`

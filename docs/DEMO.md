@@ -46,7 +46,7 @@ You should see:
 1. Keep-out policy **reject** a bad Cartesian goal  
 2. `pick_object` skill steps: approach → descend → grasp → lift  
 3. Mid-skill **modulate**  
-4. NeuralBridge-style map → `home`  
+4. Neurabridge-style map → `home`  
 
 ## 2. Pick-and-place scenario
 

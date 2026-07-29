@@ -1,13 +1,13 @@
 /**
- * Map NeuralBridge IntentionEvent / GestureEvent shapes → NeuraRoboBridge intentions.
- * Duck-typed — no hard dependency on the neuralbridge package.
+ * Map Neurabridge IntentionEvent / GestureEvent shapes → NeuraRoboBridge intentions.
+ * Duck-typed — no hard dependency on the neurabridge package.
  */
 
 import type { IntentionInput, IntentionKind } from "../../types/intention.js";
 import type { TaskName } from "../../types/task.js";
 
-/** Minimal NeuralBridge intention shape. */
-export interface NeuralBridgeIntentionLike {
+/** Minimal Neurabridge intention shape. */
+export interface NeurabridgeIntentionLike {
   type: string;
   confidence: number;
   timestamp: number;
@@ -16,8 +16,8 @@ export interface NeuralBridgeIntentionLike {
   sequence?: number;
 }
 
-/** Minimal NeuralBridge gesture shape. */
-export interface NeuralBridgeGestureLike {
+/** Minimal Neurabridge gesture shape. */
+export interface NeurabridgeGestureLike {
   type: string;
   confidence: number;
   timestamp: number;
@@ -28,28 +28,28 @@ export interface NeuralBridgeGestureLike {
 }
 
 export type IntentionMapFn = (
-  event: NeuralBridgeIntentionLike
+  event: NeurabridgeIntentionLike
 ) => IntentionInput | null;
 
 export type GestureMapFn = (
-  event: NeuralBridgeGestureLike
+  event: NeurabridgeGestureLike
 ) => IntentionInput | null;
 
 /**
- * Default mapping from NeuralBridge app-level intents to robot intentions.
+ * Default mapping from Neurabridge app-level intents to robot intentions.
  *
- * NeuralBridge types are UI-oriented (click, select, scroll…).
+ * Neurabridge types are UI-oriented (click, select, scroll…).
  * Robot-oriented apps should emit custom types or payload.robotKind.
  */
-export function mapNeuralBridgeIntention(
-  event: NeuralBridgeIntentionLike
+export function mapNeurabridgeIntention(
+  event: NeurabridgeIntentionLike
 ): IntentionInput | null {
   const p = event.payload ?? {};
   const conf = event.confidence;
   const base = {
     confidence: conf,
     timestamp: event.timestamp,
-    source: event.source ?? "neuralbridge",
+    source: event.source ?? "neurabridge",
     meta: { neuralBridgeType: event.type, sequence: event.sequence },
   };
 
@@ -171,7 +171,7 @@ export function mapNeuralBridgeIntention(
       };
     }
     default:
-      // Pass through known robot kinds if NeuralBridge emits them directly
+      // Pass through known robot kinds if Neurabridge emits them directly
       if (
         [
           "move",
@@ -197,14 +197,14 @@ export function mapNeuralBridgeIntention(
   }
 }
 
-export function mapNeuralBridgeGesture(
-  event: NeuralBridgeGestureLike
+export function mapNeurabridgeGesture(
+  event: NeurabridgeGestureLike
 ): IntentionInput | null {
   const conf = event.confidence;
   const base = {
     confidence: conf,
     timestamp: event.timestamp,
-    source: event.source ?? "neuralbridge-gesture",
+    source: event.source ?? "neurabridge-gesture",
     meta: { neuralBridgeGesture: event.type },
   };
   const v = event.vector;

@@ -1,4 +1,4 @@
-# Skills, policies, and NeuralBridge adapter
+# Skills, policies, and Neurabridge adapter
 
 ## Skill runtime (shared autonomy)
 
@@ -162,17 +162,17 @@ bridge.addPolicy({
 
 ---
 
-## NeuralBridge adapter
+## Neurabridge adapter
 
-Zero hard dependency on `neuralbridge`. Duck-types any emitter with `on("intention", …)`.
+Zero hard dependency on `neurabridge`. Duck-types any emitter with `on("intention", …)`.
 
 ```ts
-import { NeuraRoboBridge, attachNeuralBridge } from "neurarobobridge";
-import { NeuralBridge } from "neuralbridge";
+import { NeuraRoboBridge, attachNeurabridge } from "neurarobobridge";
+import { Neurabridge } from "neurabridge";
 
-const neural = new NeuralBridge({ backend: "simulator" });
+const neural = new Neurabridge({ backend: "simulator" });
 const robo = new NeuraRoboBridge({
-  bciBackend: "manual", // intentions come from NeuralBridge, not internal BCI
+  bciBackend: "manual", // intentions come from Neurabridge, not internal BCI
   robotBackend: "simulated-arm",
 });
 
@@ -180,7 +180,7 @@ await neural.connect();
 await robo.connect();
 await robo.enableControl("supervised");
 
-const detach = attachNeuralBridge(neural, robo, {
+const detach = attachNeurabridge(neural, robo, {
   forwardGestures: true,
   onDrop: (reason, ev) => console.debug("drop", reason, ev),
 });
@@ -191,7 +191,7 @@ detach();
 
 ### Mapping highlights
 
-| NeuralBridge | NeuraRoboBridge |
+| Neurabridge | NeuraRoboBridge |
 |--------------|----------------|
 | `confirm` / `click` / `select` | `confirm` (or grasp if `payload.as === "grasp"`) |
 | `cancel` | `cancel` |
@@ -204,6 +204,6 @@ Override with `mapIntention` / `mapGesture` options.
 
 ### Suite roles
 
-- **NeuralBridge** — BCI → app/UI intents  
+- **Neurabridge** — BCI → app/UI intents  
 - **NeuraRoboBridge** — intents → safe robot action (skills + policies)  
 - **Adapter** — optional glue when one process hosts both  

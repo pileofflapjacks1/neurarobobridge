@@ -19,7 +19,7 @@
   <text x="72" y="210" fill="#e7eef7" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="18" font-weight="600">Simulator</text>
   <text x="72" y="238" fill="#8aa0b8" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14">Manual / inject</text>
   <text x="72" y="266" fill="#8aa0b8" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14">Playback</text>
-  <text x="72" y="294" fill="#8aa0b8" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14">NeuralBridge adapter</text>
+  <text x="72" y="294" fill="#8aa0b8" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14">Neurabridge adapter</text>
   <text x="72" y="340" fill="#5ddea0" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="13">NeuralIntention</text>
   <text x="72" y="368" fill="#8aa0b8" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">move · grasp · task</text>
   <text x="72" y="386" fill="#8aa0b8" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">confidence · quality</text>

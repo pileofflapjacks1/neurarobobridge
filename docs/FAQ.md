@@ -42,5 +42,5 @@ See the short answer block in the README FAQ, or:
 
 - [Architecture](./architecture.md)  
 - [Adding backends](./adding-backends.md)  
-- [Skills, policies, NeuralBridge](./skills-policies-neuralbridge.md)  
+- [Skills, policies, Neurabridge](./skills-policies-neurabridge.md)  
 - [Demo guide](./DEMO.md)  

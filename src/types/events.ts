@@ -70,7 +70,7 @@ export interface NeuraRoboBridgeEvents {
   skill: (skill: ActiveSkill) => void;
   /** Pipeline latency samples. */
   latency: (sample: LatencySample) => void;
-  /** Intention dropped by NeuralBridge adapter mapping (optional consumers). */
+  /** Intention dropped by Neurabridge adapter mapping (optional consumers). */
   adapterDrop: (reason: string, event: unknown) => void;
 }
 

@@ -56,7 +56,7 @@ describe("Skill runtime", () => {
       () => {
         expect(skills.some((s) => s.status === "succeeded")).toBe(true);
       },
-      { timeout: 3000, interval: 30 }
+      { timeout: 8000, interval: 30 }
     );
 
     expect(commands.some((c) => c.kind === "move_to")).toBe(true);

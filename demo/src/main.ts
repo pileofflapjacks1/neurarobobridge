@@ -9,6 +9,7 @@ import {
   type RobotState,
   type ActiveSkill,
   type ControlMode,
+  type PendingConfirmation,
   type RobotCommand,
   type SkillDefinition,
 } from "neurarobobridge";
@@ -46,6 +47,14 @@ app.innerHTML = `
       <button type="button" id="btnHelpDismiss">Dismiss</button>
       <button type="button" id="btnHelpHome">Home</button>
       <button type="button" id="btnHelpExport">Export black-box</button>
+    </div>
+  </div>
+
+  <div id="confirmBanner" class="confirm-banner" role="alert">
+    <strong>Confirm</strong> — <span id="confirmText">High-risk task is waiting.</span>
+    <div class="help-actions">
+      <button type="button" id="btnConfirm" class="primary">Confirm</button>
+      <button type="button" id="btnReject">Reject</button>
     </div>
   </div>
 
@@ -99,6 +108,17 @@ app.innerHTML = `
           <button type="button" class="skill" data-skill="place_object" disabled>Place</button>
           <button type="button" class="skill" data-skill="wave" disabled>Wave</button>
           <button type="button" class="skill" data-skill="home" data-kind="home" disabled>Home</button>
+        </div>
+        <div id="humanoidSkills" hidden>
+          <div class="row">
+            <button type="button" class="skill humanoid-skill" data-skill="go_to" disabled>Go to</button>
+            <button type="button" class="skill humanoid-skill" data-skill="hand_over" disabled>Hand over</button>
+          </div>
+          <p class="hint">
+            Go to walks the base between two goals. Hand over presents the gripper.
+            Both wait for confirm in Supervised and Shared. Teleop runs them immediately.
+            The fixed-base arm has no Go to.
+          </p>
         </div>
         <div class="row">
           <button type="button" id="btnCancel" disabled>Cancel skill</button>
@@ -210,6 +230,11 @@ const btnHelpHome = $("#btnHelpHome") as HTMLButtonElement;
 const btnHelpExport = $("#btnHelpExport") as HTMLButtonElement;
 const btnVizHumanoid = $("#btnVizHumanoid") as HTMLButtonElement;
 const btnVizSchema = $("#btnVizSchema") as HTMLButtonElement;
+const humanoidSkills = $("#humanoidSkills");
+const confirmBanner = $("#confirmBanner");
+const confirmText = $("#confirmText");
+const btnConfirm = $("#btnConfirm") as HTMLButtonElement;
+const btnReject = $("#btnReject") as HTMLButtonElement;
 
 function $<T extends HTMLElement = HTMLElement>(sel: string): T {
   return app.querySelector(sel) as T;
@@ -223,8 +248,12 @@ let modSpeed = 0.55;
 let hangPatch: ((cmd: RobotCommand) => Promise<void> | void) | null = null;
 let vizMode: VizMode = "humanoid";
 let rafId = 0;
+let pendingConfirmId: string | null = null;
+/** Alternates Go to between two base goals so a second confirm walks again. */
+let goToFlip = false;
 
 function createBridge(): NeuraRoboBridge {
+  const humanoid = robotBackend === "simulated-humanoid";
   return new NeuraRoboBridge({
     bciBackend: "manual",
     robotBackend,
@@ -236,8 +265,10 @@ function createBridge(): NeuraRoboBridge {
       minCommandIntervalMs: 40,
       enableEmergencyStop: true,
       watchdogTimeoutMs: 0, // interactive demo — no silent timeout
-      confirmTasks: [],
-      confirmNavigate: false,
+      // Arm stays immediate. Humanoid go_to / hand_over use the library confirm gate.
+      confirmTasks: humanoid ? ["go_to", "hand_over"] : [],
+      confirmNavigate: humanoid,
+      confirmTimeoutMs: 12_000,
       defaultControlMode: "supervised",
       maxIntentionAgeMs: 2000,
       maxTaskAgeMs: 5000,
@@ -273,6 +304,28 @@ function showNeedsHelp(message: string): void {
 
 function hideNeedsHelp(): void {
   helpBanner.classList.remove("visible");
+}
+
+function describePending(p: PendingConfirmation): string {
+  const payload = p.snapshot.payload as { position?: { x: number; y: number; z: number } } | undefined;
+  const pos = payload?.position;
+  const where = pos
+    ? ` → (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`
+    : "";
+  const secs = Math.max(1, Math.ceil((p.expiresAt - Date.now()) / 1000));
+  return `${p.task ?? p.kind}${where}. Confirm to run, or reject. Expires in ${secs}s.`;
+}
+
+function showConfirm(p: PendingConfirmation): void {
+  pendingConfirmId = p.id;
+  confirmText.textContent = describePending(p);
+  confirmBanner.classList.add("visible");
+  confirmBanner.scrollIntoView({ block: "nearest" });
+}
+
+function hideConfirm(): void {
+  pendingConfirmId = null;
+  confirmBanner.classList.remove("visible");
 }
 
 function downloadBlob(filename: string, content: string, mime: string): void {
@@ -349,9 +402,16 @@ function wireBridge(b: NeuraRoboBridge): void {
   });
   b.on("robotState", (s) => {
     lastState = s;
-    // rAF loop also paints for idle bob; keep lastState fresh
+    // Pose readout tracks the sim tick. Chips stay on refreshUi so 24 Hz
+    // state does not rebuild the whole sidebar.
+    renderStatus();
   });
+  b.on("pendingConfirm", (p) => showConfirm(p));
   b.on("feedback", (f) => {
+    if (f.kind === "confirm_timeout") {
+      if (b.getPendingConfirmations().length === 0) hideConfirm();
+      return;
+    }
     if (f.kind === "needs_help") {
       showNeedsHelp(f.message);
       log(`needs_help: ${f.message}`, "tag-err");
@@ -412,6 +472,11 @@ function refreshUi(): void {
   app.querySelectorAll<HTMLButtonElement>(".intent, .skill, [data-mode]").forEach((el) => {
     el.disabled = !connected;
   });
+  const humanoid = robotBackend === "simulated-humanoid";
+  humanoidSkills.hidden = !humanoid;
+  app.querySelectorAll<HTMLButtonElement>(".humanoid-skill").forEach((el) => {
+    el.disabled = !connected || !humanoid;
+  });
 
   app.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach((el) => {
     el.classList.toggle("active", el.dataset.mode === mode);
@@ -419,6 +484,8 @@ function refreshUi(): void {
 
   btnArm.classList.toggle("active", robotBackend === "simulated-arm");
   btnHumanoid.classList.toggle("active", robotBackend === "simulated-humanoid");
+
+  renderStatus();
 
   const caps = bridge.getCapabilities();
   chipsEl.innerHTML = `
@@ -429,13 +496,22 @@ function refreshUi(): void {
     ${caps ? `<span class="chip">${caps.class}</span>` : ""}
   `;
 
+}
+
+function renderStatus(): void {
+  const connected = bridge.isConnected();
+  const enabled = bridge.isControlEnabled();
+  const estop = bridge.isEmergencyStopActive();
+  const mode = bridge.getControlMode();
   const pose = lastState?.pose?.position;
+  const base = lastState?.basePose?.position;
   statusText.textContent = [
     `status: ${connected ? "connected" : "disconnected"}`,
     `control: ${enabled} · mode: ${mode} · estop: ${estop}`,
     pose
       ? `ee: (${pose.x.toFixed(2)}, ${pose.y.toFixed(2)}, ${pose.z.toFixed(2)})`
       : "ee: —",
+    base ? `base: (${base.x.toFixed(2)}, ${base.y.toFixed(2)})` : "",
     lastState?.message ? `msg: ${lastState.message}` : "",
   ]
     .filter(Boolean)
@@ -478,6 +554,11 @@ startPaintLoop();
 async function reconnect(next: "simulated-arm" | "simulated-humanoid"): Promise<void> {
   robotBackend = next;
   try {
+    if (bridge.isConnected()) {
+      // Cancel before disconnect so a running skill does not stop a torn-down backend.
+      bridge.injectIntention({ kind: "cancel", confidence: 0.99 });
+      await new Promise((r) => setTimeout(r, 50));
+    }
     await bridge.disconnect();
   } catch {
     /* ignore */
@@ -486,6 +567,8 @@ async function reconnect(next: "simulated-arm" | "simulated-humanoid"): Promise<
   bridge = createBridge();
   wireBridge(bridge);
   lastState = null;
+  goToFlip = false;
+  hideConfirm();
   updateSkillUi(null);
   log(`robot backend → ${robotBackend}`, "tag-skill");
   refreshUi();
@@ -513,11 +596,13 @@ btnEnable.onclick = async () => {
 
 btnDisable.onclick = async () => {
   await bridge.disableControl();
+  hideConfirm();
   refreshUi();
 };
 
 btnEstop.onclick = () => {
   bridge.emergencyStop("UI e-stop");
+  hideConfirm();
   refreshUi();
 };
 
@@ -586,20 +671,52 @@ app.querySelectorAll<HTMLButtonElement>(".skill").forEach((btn) => {
       pick_object: { x: 0.35, y: 0.08, z: 0.22 },
       place_object: { x: -0.25, y: 0.12, z: 0.22 },
       wave: { x: 0.3, y: 0.15, z: 0.55 },
+      hand_over: { x: 0.28, y: 0.0, z: 0.62 },
     };
+    const highRisk = skill === "go_to" || skill === "hand_over";
+    const position =
+      skill === "go_to"
+        ? (goToFlip = !goToFlip)
+          ? { x: 0.62, y: -0.36, z: 0 }
+          : { x: -0.2, y: 0.32, z: 0 }
+        : positions[skill];
     bridge.injectIntention({
       kind: "task",
       confidence: 0.93,
       payload: {
         task: skill,
-        position: positions[skill],
-        requireConfirm: false,
+        position,
+        // Arm skills stay immediate. Humanoid high-risk tasks use confirmTasks.
+        ...(highRisk ? {} : { requireConfirm: false as const }),
       },
     });
   };
 });
 
+btnConfirm.onclick = () => {
+  const id = pendingConfirmId;
+  if (!id) return;
+  hideConfirm();
+  bridge.injectIntention({
+    kind: "confirm",
+    confidence: 0.99,
+    payload: { confirmationId: id },
+  });
+};
+
+btnReject.onclick = () => {
+  const id = pendingConfirmId;
+  if (!id) return;
+  hideConfirm();
+  bridge.injectIntention({
+    kind: "reject",
+    confidence: 0.99,
+    payload: { confirmationId: id },
+  });
+};
+
 btnCancel.onclick = () => {
+  hideConfirm();
   bridge.injectIntention({ kind: "cancel", confidence: 0.99 });
 };
 
@@ -724,6 +841,7 @@ window.addEventListener("keydown", (ev) => {
     },
     Escape: () => {
       bridge.emergencyStop("keyboard");
+      hideConfirm();
       refreshUi();
     },
   };

@@ -266,7 +266,7 @@ Built-in skills: `pick_object`, `place_object`, `hand_over`, `follow_me`, `go_to
 
 ### Timeouts & needs_help
 
-Skills time out per step (default 8s) and overall (default 60s). On failure the runtime:
+Skills time out per step (default 8s) and overall (default 60s). On the simulators, `move_to`, `move_delta`, `navigate`, and `home` stay in progress until the body arrives. A step that never arrives still times out. On failure the runtime:
 
 1. Marks the skill `needs_help` (or `failed`)
 2. Emits `feedback` with `kind: "needs_help"`
@@ -328,7 +328,7 @@ npm run build
 import { NeuraRoboBridge } from "neurarobobridge";
 ```
 
-Version **0.3.0** · package name `neurarobobridge`.
+Version **0.3.4** · package name `neurarobobridge`.
 
 ---
 

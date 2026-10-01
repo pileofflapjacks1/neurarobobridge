@@ -75,11 +75,32 @@ a:hover {
   color: #ff8a95;
 }
 
-.help-banner .help-actions {
+.help-banner .help-actions,
+.confirm-banner .help-actions {
   margin-top: 0.5rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
+}
+
+.confirm-banner {
+  display: none;
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #6a5420;
+  background: rgba(240, 180, 41, 0.12);
+  border-radius: 10px;
+  color: #ffe7b0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.confirm-banner.visible {
+  display: block;
+}
+
+.confirm-banner strong {
+  color: var(--warn);
 }
 
 header.top {

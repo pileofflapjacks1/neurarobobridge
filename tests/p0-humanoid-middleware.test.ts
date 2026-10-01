@@ -254,7 +254,7 @@ describe("P0 humanoid middleware features", () => {
         () => {
           expect(feedback.some((f) => f.kind === "task_completed")).toBe(true);
         },
-        { timeout: 1500, interval: 30 }
+        { timeout: 8000, interval: 30 }
       );
     });
   });

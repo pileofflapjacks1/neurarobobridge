@@ -19,6 +19,7 @@ import { armCapabilities } from "../types/capabilities.js";
 import { DEFAULT_SIMULATED_ARM, DEFAULT_WORKSPACE } from "../core/defaults.js";
 import { createId } from "../core/id.js";
 import type { Logger } from "../core/Logger.js";
+import { ArrivalGate } from "./ArrivalGate.js";
 
 type StateHandler = (s: RobotState) => void;
 type FeedbackHandler = (f: RobotFeedback) => void;
@@ -39,6 +40,7 @@ export class SimulatedArmBackend implements RobotBackend {
   private mode: RobotMode = "disconnected";
   private targetPose: Pose | null = null;
   private targetJoints: number[] | null = null;
+  private readonly arrival = new ArrivalGate();
   private lastCommandId?: string;
   private message?: string;
   private handlers = new Set<StateHandler>();
@@ -75,6 +77,9 @@ export class SimulatedArmBackend implements RobotBackend {
 
   async disconnect(): Promise<void> {
     this.stopTick();
+    this.targetPose = null;
+    this.targetJoints = null;
+    this.arrival.release();
     this.connected = false;
     this.mode = "disconnected";
     this.statusHandlers.forEach((h) => h("disconnected"));
@@ -121,34 +126,42 @@ export class SimulatedArmBackend implements RobotBackend {
         this.targetJoints = null;
         this.mode = "ready";
         this.message = "Stopped";
+        this.arrival.release();
         break;
-      case "home":
-        this.targetJoints = [...(this.config.homeJoints ?? this.joints.map(() => 0))];
+      case "home": {
+        const home = [...(this.config.homeJoints ?? this.joints.map(() => 0))];
+        this.targetJoints = home;
         this.targetPose = null;
-        this.mode = "moving";
         this.message = "Homing";
+        const already = this.jointsNear(this.clampJointTarget(home));
+        if (await this.beginMotion(already, "At joint target")) return;
         break;
+      }
       case "move_to":
         if (command.pose) {
           this.targetPose = command.pose;
           this.targetJoints = null;
-          this.mode = "moving";
           this.message = `Moving to (${fmt(command.pose.position)})`;
+          const err = dist(
+            this.forwardKinematics().position,
+            command.pose.position
+          );
+          if (await this.beginMotion(err < 0.02, "At Cartesian target")) return;
         }
         break;
       case "move_delta":
         if (command.pose) {
           const cur = this.forwardKinematics();
-          this.targetPose = {
-            position: {
-              x: cur.position.x + command.pose.position.x,
-              y: cur.position.y + command.pose.position.y,
-              z: cur.position.z + command.pose.position.z,
-            },
+          const goal = {
+            x: cur.position.x + command.pose.position.x,
+            y: cur.position.y + command.pose.position.y,
+            z: cur.position.z + command.pose.position.z,
           };
+          this.targetPose = { position: goal };
           this.targetJoints = null;
-          this.mode = "moving";
-          this.message = `Delta move`;
+          this.message = "Delta move";
+          const err = dist(cur.position, goal);
+          if (await this.beginMotion(err < 0.02, "At Cartesian target")) return;
         }
         break;
       case "set_gripper":
@@ -215,6 +228,7 @@ export class SimulatedArmBackend implements RobotBackend {
       case "cancel_task":
         this.targetPose = null;
         this.targetJoints = null;
+        this.arrival.release();
         if (this.activeTaskId) {
           this.emitFeedback({
             kind: "task_cancelled",
@@ -258,6 +272,7 @@ export class SimulatedArmBackend implements RobotBackend {
     this.estop = true;
     this.targetPose = null;
     this.targetJoints = null;
+    this.arrival.release();
     this.mode = "estop";
     this.message = "EMERGENCY STOP";
     this.statusHandlers.forEach((h) => h("estop", "Emergency stop"));
@@ -278,6 +293,9 @@ export class SimulatedArmBackend implements RobotBackend {
 
   dispose(): void {
     this.stopTick();
+    this.targetPose = null;
+    this.targetJoints = null;
+    this.arrival.release();
     this.handlers.clear();
     this.statusHandlers.clear();
     this.connected = false;
@@ -305,32 +323,36 @@ export class SimulatedArmBackend implements RobotBackend {
 
     const maxVel = this.config.maxJointVelocity ?? 1.5;
     let moving = false;
+    let settled = false;
 
     if (this.targetJoints) {
-      moving = this.stepTowardJoints(this.targetJoints, maxVel * dt);
+      const goal = this.clampJointTarget(this.targetJoints);
+      moving = this.stepTowardJoints(goal, maxVel * dt);
       if (!moving) {
         this.targetJoints = null;
-        this.mode = "ready";
+        settled = true;
         this.message = "At joint target";
       }
     } else if (this.targetPose) {
-      // Inverse-ish: map Cartesian to first 3 joints simply
-      const targetJ = this.inverseApproximate(this.targetPose.position);
+      const targetJ = this.clampJointTarget(
+        this.inverseApproximate(this.targetPose.position)
+      );
       moving = this.stepTowardJoints(targetJ, maxVel * dt);
       const cur = this.forwardKinematics().position;
       const err = dist(cur, this.targetPose.position);
-      if (err < 0.01 && !moving) {
+      // Approximate IK can stop short of the Cartesian goal. Settle either way
+      // so a step cannot hang until the skill timeout.
+      if (!moving || err < 0.02) {
         this.targetPose = null;
-        this.mode = "ready";
-        this.message = "At Cartesian target";
-      } else if (err < 0.01) {
-        this.targetPose = null;
-        this.mode = "ready";
-        this.message = "At Cartesian target";
+        settled = true;
+        this.message =
+          err < 0.02 ? "At Cartesian target" : "Settled at nearest pose";
       }
     }
 
-    if (moving && this.mode !== "grasping") {
+    if (settled) {
+      this.mode = "ready";
+    } else if (moving && this.mode !== "grasping") {
       this.mode = "moving";
     }
 
@@ -348,6 +370,49 @@ export class SimulatedArmBackend implements RobotBackend {
     }
 
     this.emitState();
+    if (!this.targetPose && !this.targetJoints) {
+      this.arrival.release();
+    }
+  }
+
+  /**
+   * Wait until the tick clears the joint or Cartesian target.
+   * Returns true when this call waited and the caller should return.
+   */
+  private async beginMotion(
+    alreadyThere: boolean,
+    arrivedMessage: string
+  ): Promise<boolean> {
+    if (alreadyThere) {
+      this.targetPose = null;
+      this.targetJoints = null;
+      if (!this.estop) this.mode = "ready";
+      this.message = arrivedMessage;
+      this.arrival.release();
+      return false;
+    }
+    this.mode = "moving";
+    this.emitState();
+    await this.arrival.wait();
+    return true;
+  }
+
+  private jointsNear(target: number[]): boolean {
+    for (let i = 0; i < this.joints.length; i++) {
+      if (Math.abs((target[i] ?? this.joints[i]!) - this.joints[i]!) > 1e-3) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private clampJointTarget(target: number[]): number[] {
+    const limits = this.config.jointLimits ?? [];
+    return target.map((position, i) => {
+      const lim = limits[i];
+      if (!lim) return position;
+      return clamp(position, lim.min, lim.max);
+    });
   }
 
   private stepTowardJoints(target: number[], maxStep: number): boolean {

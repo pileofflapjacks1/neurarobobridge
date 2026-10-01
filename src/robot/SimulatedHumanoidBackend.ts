@@ -12,6 +12,7 @@ import type { RobotFeedback } from "../types/feedback.js";
 import { humanoidCapabilities } from "../types/capabilities.js";
 import { createId } from "../core/id.js";
 import type { Logger } from "../core/Logger.js";
+import { ArrivalGate } from "./ArrivalGate.js";
 
 type StateHandler = (s: RobotState) => void;
 type FeedbackHandler = (f: RobotFeedback) => void;
@@ -27,6 +28,10 @@ export class SimulatedHumanoidBackend implements RobotBackend {
   private baseYaw = 0;
   private targetBase: Vec3 | null = null;
   private targetYaw: number | null = null;
+  private targetEe: Vec3 | null = null;
+  private eeSpeed = 0.35;
+  private arrivedMessage = "At goal";
+  private readonly arrival = new ArrivalGate();
   private eePose: Pose = { position: { x: 0.3, y: 0.2, z: 1.0 } };
   private gripperOpen = 1;
   private lastCommandId?: string;
@@ -61,6 +66,8 @@ export class SimulatedHumanoidBackend implements RobotBackend {
   async disconnect(): Promise<void> {
     if (this.tickTimer) clearInterval(this.tickTimer);
     this.tickTimer = null;
+    this.clearTargets();
+    this.arrival.release();
     this.connected = false;
     this.mode = "disconnected";
     this.statusHandlers.forEach((h) => h("disconnected"));
@@ -97,48 +104,46 @@ export class SimulatedHumanoidBackend implements RobotBackend {
         this.emergencyStop();
         break;
       case "stop":
-        this.targetBase = null;
-        this.targetYaw = null;
+        this.clearTargets();
         this.mode = "ready";
         this.message = "Stopped";
+        this.arrival.release();
         break;
       case "home":
         this.targetBase = { x: 0, y: 0, z: 0 };
         this.targetYaw = 0;
-        this.eePose = { position: { x: 0.3, y: 0.2, z: 1.0 } };
-        this.mode = "moving";
-        this.message = "Homing";
+        this.targetEe = { x: 0.3, y: 0.2, z: 1.0 };
+        this.eeSpeed = 0.35;
+        if (await this.trackUntilArrived("Homing", "At goal")) return;
         break;
       case "navigate":
         if (command.goal) {
           this.targetBase = { ...command.goal };
           this.targetYaw = command.yaw ?? null;
-          this.mode = "moving";
-          this.message = `Navigating to (${command.goal.x.toFixed(2)}, ${command.goal.y.toFixed(2)})`;
+          if (
+            await this.trackUntilArrived(
+              `Navigating to (${command.goal.x.toFixed(2)}, ${command.goal.y.toFixed(2)})`,
+              "At goal"
+            )
+          ) {
+            return;
+          }
         }
         break;
       case "move_to":
       case "move_delta":
         if (command.pose) {
-          if (command.kind === "move_delta") {
-            this.eePose = {
-              position: {
-                x: this.eePose.position.x + command.pose.position.x,
-                y: this.eePose.position.y + command.pose.position.y,
-                z: this.eePose.position.z + command.pose.position.z,
-              },
-            };
-          } else {
-            this.eePose = command.pose;
-          }
-          this.mode = "moving";
-          this.message = "Arm motion";
-          setTimeout(() => {
-            if (!this.estop) {
-              this.mode = "ready";
-              this.emitState();
-            }
-          }, 300);
+          const goal =
+            command.kind === "move_delta"
+              ? {
+                  x: this.eePose.position.x + command.pose.position.x,
+                  y: this.eePose.position.y + command.pose.position.y,
+                  z: this.eePose.position.z + command.pose.position.z,
+                }
+              : { ...command.pose.position };
+          this.targetEe = goal;
+          this.eeSpeed = eeMetersPerSec(command.speed);
+          if (await this.trackUntilArrived("Arm motion", "At pose")) return;
         }
         break;
       case "set_gripper":
@@ -202,8 +207,8 @@ export class SimulatedHumanoidBackend implements RobotBackend {
         break;
       }
       case "cancel_task":
-        this.targetBase = null;
-        this.targetYaw = null;
+        this.clearTargets();
+        this.arrival.release();
         if (this.activeTaskId) {
           this.emitFeedback({
             kind: "task_cancelled",
@@ -246,8 +251,8 @@ export class SimulatedHumanoidBackend implements RobotBackend {
 
   emergencyStop(): void {
     this.estop = true;
-    this.targetBase = null;
-    this.targetYaw = null;
+    this.clearTargets();
+    this.arrival.release();
     this.mode = "estop";
     this.message = "EMERGENCY STOP";
     this.statusHandlers.forEach((h) => h("estop"));
@@ -265,6 +270,9 @@ export class SimulatedHumanoidBackend implements RobotBackend {
 
   dispose(): void {
     if (this.tickTimer) clearInterval(this.tickTimer);
+    this.tickTimer = null;
+    this.clearTargets();
+    this.arrival.release();
     this.handlers.clear();
     this.connected = false;
   }
@@ -289,15 +297,31 @@ export class SimulatedHumanoidBackend implements RobotBackend {
     }
 
     if (this.targetYaw !== null) {
-      let dyaw = this.targetYaw - this.baseYaw;
-      while (dyaw > Math.PI) dyaw -= 2 * Math.PI;
-      while (dyaw < -Math.PI) dyaw += 2 * Math.PI;
+      const dyaw = yawError(this.targetYaw, this.baseYaw);
       if (Math.abs(dyaw) > 0.02) {
         moving = true;
         const step = Math.sign(dyaw) * Math.min(1.5 * dt, Math.abs(dyaw));
         this.baseYaw += step;
       } else {
+        this.baseYaw = this.targetYaw;
         this.targetYaw = null;
+      }
+    }
+
+    if (this.targetEe) {
+      const dx = this.targetEe.x - this.eePose.position.x;
+      const dy = this.targetEe.y - this.eePose.position.y;
+      const dz = this.targetEe.z - this.eePose.position.z;
+      const dist = Math.hypot(dx, dy, dz);
+      if (dist > 0.02) {
+        moving = true;
+        const step = Math.min(this.eeSpeed * dt, dist);
+        this.eePose.position.x += (dx / dist) * step;
+        this.eePose.position.y += (dy / dist) * step;
+        this.eePose.position.z += (dz / dist) * step;
+      } else {
+        this.eePose = { position: { ...this.targetEe } };
+        this.targetEe = null;
       }
     }
 
@@ -305,7 +329,7 @@ export class SimulatedHumanoidBackend implements RobotBackend {
       this.mode = "moving";
     } else if (this.mode === "moving") {
       this.mode = "ready";
-      this.message = "At goal";
+      this.message = this.arrivedMessage;
     }
 
     const viz = this.config.textVizInterval ?? 0;
@@ -314,6 +338,55 @@ export class SimulatedHumanoidBackend implements RobotBackend {
     }
 
     this.emitState();
+    if (!this.targetBase && this.targetYaw === null && !this.targetEe) {
+      this.arrival.release();
+    }
+  }
+
+  /**
+   * Wait until base, yaw, and end-effector targets are clear.
+   * Returns true when this call owned the wait and the caller should return.
+   * Already-there motions resolve immediately and fall through to emitState.
+   */
+  private async trackUntilArrived(
+    movingMessage: string,
+    arrivedMessage: string
+  ): Promise<boolean> {
+    this.arrivedMessage = arrivedMessage;
+    if (!this.motionPending()) {
+      this.clearTargets();
+      if (!this.estop) this.mode = "ready";
+      this.message = arrivedMessage;
+      this.arrival.release();
+      return false;
+    }
+    this.mode = "moving";
+    this.message = movingMessage;
+    this.emitState();
+    await this.arrival.wait();
+    return true;
+  }
+
+  private motionPending(): boolean {
+    if (this.targetBase && hypot2(this.targetBase, this.base.position) > 0.02) {
+      return true;
+    }
+    if (
+      this.targetYaw !== null &&
+      Math.abs(yawError(this.targetYaw, this.baseYaw)) > 0.02
+    ) {
+      return true;
+    }
+    if (this.targetEe && hypot3(this.targetEe, this.eePose.position) > 0.02) {
+      return true;
+    }
+    return false;
+  }
+
+  private clearTargets(): void {
+    this.targetBase = null;
+    this.targetYaw = null;
+    this.targetEe = null;
   }
 
   renderText(): string {
@@ -378,4 +451,25 @@ export class SimulatedHumanoidBackend implements RobotBackend {
       }
     }
   }
+}
+
+function hypot2(a: Vec3, b: Vec3): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function hypot3(a: Vec3, b: Vec3): number {
+  return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
+function yawError(target: number, current: number): number {
+  let dyaw = target - current;
+  while (dyaw > Math.PI) dyaw -= 2 * Math.PI;
+  while (dyaw < -Math.PI) dyaw += 2 * Math.PI;
+  return dyaw;
+}
+
+/** Command speed is 0–1. Map it to m/s with a floor so short poses still settle visibly. */
+function eeMetersPerSec(speed?: number): number {
+  const s = speed === undefined ? 0.4 : Math.min(1, Math.max(0, speed));
+  return Math.max(0.3, s * 0.8);
 }

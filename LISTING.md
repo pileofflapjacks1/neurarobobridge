@@ -7,7 +7,7 @@ Use this when uploading or seeding **NeuraRoboBridge** on [NeuraBeach](https://n
 | Field | Value |
 |-------|--------|
 | Title | NeuraRoboBridge |
-| Version | 0.3.0 |
+| Version | 0.3.4 |
 | Category | Research Utility |
 | License | MIT |
 | Language | TypeScript |

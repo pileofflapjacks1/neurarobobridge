@@ -276,6 +276,8 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
   async disableControl(): Promise<void> {
     this.watchdog.stop();
     this.confirmMgr.cancelAll();
+    // Bump skill generation before stop releases an in-flight arrival wait.
+    this.skillRuntime.cancel("Control disabled");
     const event = this.safety.setControlEnabled(false);
     if (event) this.emitSafety(event);
     if (this.connected) {
@@ -800,6 +802,12 @@ export class NeuraRoboBridge extends TypedEventEmitter<NeuraRoboBridgeEvents> {
         message: `Running ${command.task.name}`,
       };
       this.emit("task", this.activeTask);
+    }
+
+    if (command.kind === "stop") {
+      // Bump the skill generation before the backend releases an in-flight
+      // arrival wait, so the interrupted step cannot report success.
+      this.skillRuntime.cancel("Stopped");
     }
 
     this.emit("command", command);

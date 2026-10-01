@@ -21,7 +21,9 @@ npm run demo:preview    # preview production build
 - Connect → **Enable control** (required) → skills / teleop
 - Simulated **arm** or **humanoid**
 - **Viz toggle:** Humanoid 2.5D figure (default) or top-down schema
-- Skills: pick, place, wave; modulate speed; cancel
+- Skills: pick, place, wave on both backends; **Go to** and **Hand over** on the humanoid
+- **Confirm** before Go to and Hand over in Supervised and Shared (Teleop runs them immediately). The arm has no locomotion, so Go to stays off
+- Go to and Hand over stay in progress until the sim reports arrival. A step that never arrives still raises `needs_help`
 - **Force step timeout** → `needs_help` banner + safe-fail recovery
 - **Export black-box** JSON / text report (why it moved)
 - Keep-out zone (red corner) + low-confidence rejection

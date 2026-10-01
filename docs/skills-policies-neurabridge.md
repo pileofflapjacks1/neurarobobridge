@@ -22,7 +22,7 @@ Built-in skills: `pick_object`, `place_object`, `hand_over`, `go_to`, `follow_me
 
 1. Safety + policy gates accept the task  
 2. Skill builds ordered steps (`move_to`, `set_gripper`, `navigate`, …)  
-3. Runtime executes steps with delays; emits `skill` + `task` + `command`  
+3. Runtime executes steps with delays; emits `skill` + `task` + `command`. `move_to`, `move_delta`, `navigate`, and `home` resolve when the simulator reports arrival. If it never arrives, the step timeout becomes `needs_help`  
 4. Human may **modulate** (`speed` / `force`) mid-skill  
 5. **cancel** / e-stop / watchdog preempts the skill  
 
